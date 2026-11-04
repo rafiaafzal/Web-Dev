@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -41,7 +41,7 @@ interface NavbarProps {
   } | null;
 }
 
-export function Navbar({ user = { name: "Alex Recruiter", email: "alex@company.com", role: "recruiter" } }: NavbarProps) {
+function NavbarContent({ user = { name: "Alex Recruiter", email: "alex@company.com", role: "recruiter" } }: NavbarProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -255,5 +255,17 @@ export function Navbar({ user = { name: "Alex Recruiter", email: "alex@company.c
         </div>
       )}
     </header>
+  );
+}
+
+export function Navbar(props: NavbarProps) {
+  return (
+    <Suspense
+      fallback={
+        <header className="sticky top-0 z-40 w-full h-16 border-b border-slate-200/80 bg-white/95" />
+      }
+    >
+      <NavbarContent {...props} />
+    </Suspense>
   );
 }
