@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -130,12 +131,14 @@ function NavbarContent({ user = null }: NavbarProps) {
                 <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-1 shadow-lg">
-                <DropdownMenuLabel className="font-normal px-2 py-1.5">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.name || "Recruiter"}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email || ""}</p>
-                  </div>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="font-normal px-2 py-1.5">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.name || "Recruiter"}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email || ""}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="cursor-pointer p-0">
                   <Link href="/recruiter/jobs/new" className="flex w-full items-center px-2 py-1.5 text-sm">
