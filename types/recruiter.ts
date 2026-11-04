@@ -90,6 +90,7 @@ export type InterviewQuestion = {
   category: 'role' | 'project';
   question: string;
   answer_guide: string;
+  created_at?: string;
 };
 
 export type InterviewFeedback = {
