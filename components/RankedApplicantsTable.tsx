@@ -2,8 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -21,6 +24,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Search,
   SlidersHorizontal,
   ArrowUpDown,
@@ -28,22 +39,37 @@ import {
   Users,
   CheckCircle2,
   AlertTriangle,
+  Copy,
+  Layers,
+  X,
+  Loader2,
 } from 'lucide-react';
-import type { ApplicantRow, ApplicationStatus } from '@/types/recruiter';
+import type { ApplicantRow, ApplicationStatus, DuplicatePair } from '@/types/recruiter';
+import { confirmDuplicate, dismissDuplicate } from '@/app/actions/compare';
 import { cn } from '@/lib/utils';
 
 interface RankedApplicantsTableProps {
   initialApplicants: ApplicantRow[];
   jobId: string;
+  duplicates?: DuplicatePair[];
 }
 
 export function RankedApplicantsTable({
   initialApplicants,
+  duplicates = [],
 }: RankedApplicantsTableProps) {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [minScore, setMinScore] = useState<string>('');
   const [skillSearch, setSkillSearch] = useState<string>('');
   const [sortBy, setSortBy] = useState<'score' | 'date'>('score');
+
+  // Candidate comparison selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Duplicate dialog state
+  const [activeDuplicate, setActiveDuplicate] = useState<DuplicatePair | null>(null);
+  const [isProcessingDuplicate, setIsProcessingDuplicate] = useState(false);
 
   const filteredApplicants = useMemo(() => {
     return initialApplicants
@@ -90,6 +116,66 @@ export function RankedApplicantsTable({
       });
   }, [initialApplicants, statusFilter, minScore, skillSearch, sortBy]);
 
+  const toggleSelectApplicant = (id: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      } else {
+        if (prev.length >= 4) {
+          toast.info('You can select a maximum of 4 candidates to compare');
+          return prev;
+        }
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleConfirmDuplicate = async () => {
+    if (!activeDuplicate) return;
+    setIsProcessingDuplicate(true);
+    const toastId = toast.loading('Confirming duplicate candidate flag...');
+    try {
+      const res = await confirmDuplicate(
+        activeDuplicate.application_id,
+        activeDuplicate.other_application_id
+      );
+      if (res.ok) {
+        toast.success('Duplicate verified. Recruiter note added to both applications', { id: toastId });
+        setActiveDuplicate(null);
+        router.refresh();
+      } else {
+        toast.error(res.error, { id: toastId });
+      }
+    } catch {
+      toast.error('Failed to confirm duplicate', { id: toastId });
+    } finally {
+      setIsProcessingDuplicate(false);
+    }
+  };
+
+  const handleDismissDuplicate = async () => {
+    if (!activeDuplicate) return;
+    setIsProcessingDuplicate(true);
+    const toastId = toast.loading('Dismissing duplicate candidate flag...');
+    try {
+      const res = await dismissDuplicate(
+        activeDuplicate.application_id,
+        activeDuplicate.other_application_id
+      );
+      if (res.ok) {
+        toast.success('Duplicate flag dismissed', { id: toastId });
+        setActiveDuplicate(null);
+        router.refresh();
+      } else {
+        toast.error(res.error, { id: toastId });
+      }
+    } catch {
+      toast.error('Failed to dismiss duplicate', { id: toastId });
+    } finally {
+      setIsProcessingDuplicate(false);
+    }
+  };
+
   const getStatusBadgeVariant = (status: ApplicationStatus) => {
     switch (status) {
       case 'shortlisted':
@@ -124,6 +210,8 @@ export function RankedApplicantsTable({
       </div>
     );
   }
+
+  const isCompareReady = selectedIds.length >= 2 && selectedIds.length <= 4;
 
   return (
     <div className="space-y-4">
@@ -216,11 +304,16 @@ export function RankedApplicantsTable({
         </div>
       </div>
 
-      {/* Results Count */}
+      {/* Results Count & Selection Info */}
       <div className="flex items-center justify-between text-xs text-slate-500 px-1">
         <span>
           Showing {filteredApplicants.length} of {initialApplicants.length} applicants
         </span>
+        {selectedIds.length > 0 && (
+          <span className="text-indigo-600 font-medium">
+            {selectedIds.length} candidate{selectedIds.length > 1 ? 's' : ''} selected
+          </span>
+        )}
       </div>
 
       {filteredApplicants.length === 0 ? (
@@ -248,22 +341,50 @@ export function RankedApplicantsTable({
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {filteredApplicants.map((app, index) => {
               const rank = sortBy === 'score' ? index + 1 : undefined;
+              const isSelected = selectedIds.includes(app.application_id);
+              const duplicateMatch = duplicates.find(
+                (d) =>
+                  d.application_id === app.application_id ||
+                  d.other_application_id === app.application_id
+              );
+
               return (
                 <div
                   key={app.application_id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 space-y-3"
+                  className={cn(
+                    'rounded-xl border p-4 shadow-sm bg-white dark:bg-zinc-900 space-y-3 transition-colors',
+                    isSelected
+                      ? 'border-indigo-400 ring-1 ring-indigo-300 dark:border-indigo-600'
+                      : 'border-slate-200 dark:border-zinc-800'
+                  )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelectApplicant(app.application_id)}
+                      />
                       {rank && (
                         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-zinc-800 dark:text-zinc-300">
                           #{rank}
                         </span>
                       )}
                       <div>
-                        <h4 className="font-semibold text-slate-900 dark:text-white">
-                          {app.candidate_name}
-                        </h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">
+                            {app.candidate_name}
+                          </h4>
+                          {duplicateMatch && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveDuplicate(duplicateMatch)}
+                              className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300 hover:bg-amber-100"
+                            >
+                              <Copy className="h-2.5 w-2.5" />
+                              <span>Possible duplicate</span>
+                            </button>
+                          )}
+                        </div>
                         <span className="text-xs text-slate-400">
                           Applied {new Date(app.created_at).toLocaleDateString()}
                         </span>
@@ -304,7 +425,6 @@ export function RankedApplicantsTable({
                       </div>
                     )}
 
-                    {/* 4 small breakdown indicators */}
                     {app.breakdown && (
                       <div className="grid grid-cols-4 gap-1 pt-1 text-[10px] text-slate-500">
                         <div>
@@ -335,38 +455,6 @@ export function RankedApplicantsTable({
                     )}
                   </div>
 
-                  {/* Skills Chips */}
-                  {(app.top_matched.length > 0 || app.top_gaps.length > 0) && (
-                    <div className="space-y-1.5 pt-1">
-                      {app.top_matched.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
-                          {app.top_matched.map((skill) => (
-                            <span
-                              key={skill}
-                              className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {app.top_gaps.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1">
-                          <AlertTriangle className="h-3 w-3 text-amber-600 shrink-0" />
-                          {app.top_gaps.map((skill) => (
-                            <span
-                              key={skill}
-                              className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Review Button */}
                   <div className="pt-1">
                     <Link
@@ -390,7 +478,8 @@ export function RankedApplicantsTable({
             <Table>
               <TableHeader className="bg-slate-50/75 dark:bg-zinc-950/50">
                 <TableRow>
-                  <TableHead className="w-[60px] text-center font-semibold">Rank</TableHead>
+                  <TableHead className="w-[40px] text-center"></TableHead>
+                  <TableHead className="w-[50px] text-center font-semibold">Rank</TableHead>
                   <TableHead className="font-semibold">Candidate</TableHead>
                   <TableHead className="w-[180px] font-semibold">Match Score</TableHead>
                   <TableHead className="w-[200px] font-semibold">Breakdown</TableHead>
@@ -402,18 +491,47 @@ export function RankedApplicantsTable({
               <TableBody>
                 {filteredApplicants.map((app, index) => {
                   const rank = sortBy === 'score' ? index + 1 : undefined;
+                  const isSelected = selectedIds.includes(app.application_id);
+                  const duplicateMatch = duplicates.find(
+                    (d) =>
+                      d.application_id === app.application_id ||
+                      d.other_application_id === app.application_id
+                  );
+
                   return (
                     <TableRow
                       key={app.application_id}
-                      className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors"
+                      className={cn(
+                        'hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors',
+                        isSelected && 'bg-indigo-50/40 dark:bg-indigo-950/20'
+                      )}
                     >
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectApplicant(app.application_id)}
+                        />
+                      </TableCell>
+
                       <TableCell className="text-center font-bold text-slate-500">
                         {rank ? `#${rank}` : '-'}
                       </TableCell>
 
                       <TableCell>
-                        <div className="font-semibold text-slate-900 dark:text-white">
-                          {app.candidate_name}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-slate-900 dark:text-white">
+                            {app.candidate_name}
+                          </span>
+                          {duplicateMatch && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveDuplicate(duplicateMatch)}
+                              className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors"
+                            >
+                              <Copy className="h-2.5 w-2.5" />
+                              <span>Possible duplicate</span>
+                            </button>
+                          )}
                         </div>
                         <div className="text-xs text-slate-400">
                           {new Date(app.created_at).toLocaleDateString()}
@@ -535,6 +653,138 @@ export function RankedApplicantsTable({
           </div>
         </>
       )}
+
+      {/* Sticky Bottom Compare Bar */}
+      {selectedIds.length > 0 && (
+        <div className="sticky bottom-4 z-40 mt-6 rounded-2xl border border-indigo-200 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-indigo-950 dark:bg-zinc-900/95 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 font-bold text-xs dark:bg-indigo-950 dark:text-indigo-300">
+              {selectedIds.length}
+            </span>
+            <div>
+              <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                {selectedIds.length} candidate{selectedIds.length > 1 ? 's' : ''} selected
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {isCompareReady
+                  ? 'Ready for side-by-side criteria breakdown'
+                  : 'Select between 2 and 4 candidates to enable comparison'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="text-xs text-slate-500 hover:text-slate-800"
+            >
+              Clear
+            </Button>
+
+            {isCompareReady ? (
+              <Link
+                href={`/recruiter/compare?ids=${selectedIds.join(',')}`}
+                className={cn(
+                  buttonVariants({ size: 'sm' }),
+                  'bg-indigo-600 hover:bg-indigo-700 text-white text-xs inline-flex items-center gap-1.5 shadow-sm'
+                )}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                <span>Compare ({selectedIds.length})</span>
+              </Link>
+            ) : (
+              <Button
+                size="sm"
+                disabled
+                className="text-xs inline-flex items-center gap-1.5 opacity-50"
+              >
+                <Layers className="h-3.5 w-3.5" />
+                <span>Compare ({selectedIds.length})</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Dialog */}
+      <Dialog
+        open={activeDuplicate !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveDuplicate(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <span>Possible Duplicate Candidate</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Automated detection found overlapping identity or resume summary signals between two applicant submissions.
+            </DialogDescription>
+          </DialogHeader>
+
+          {activeDuplicate && (
+            <div className="space-y-3 py-2 text-xs">
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 dark:bg-zinc-800/50 dark:border-zinc-800 space-y-1">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                  Matched Candidates:
+                </span>
+                <p className="text-slate-900 dark:text-white font-medium">
+                  {activeDuplicate.candidate_name} &harr; {activeDuplicate.other_candidate_name}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 block">
+                  Detection Reasons:
+                </span>
+                <ul className="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-400">
+                  {activeDuplicate.reasons.map((r, idx) => (
+                    <li key={idx}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-[11px] text-slate-500 italic pt-1">
+                Note: No candidates are automatically merged or deleted. Confirming or dismissing adds an internal private note for recruiter visibility.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isProcessingDuplicate}
+              onClick={handleDismissDuplicate}
+              className="text-xs"
+            >
+              Dismiss Flag
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isProcessingDuplicate}
+              onClick={handleConfirmDuplicate}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs inline-flex items-center gap-1.5"
+            >
+              {isProcessingDuplicate ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <span>Confirm Duplicate</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
