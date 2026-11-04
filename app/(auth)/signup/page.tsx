@@ -1,16 +1,21 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Sparkles, AlertCircle, Building2, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { signUp } from "@/app/actions/auth";
 
-// TEMP-STUB: remove when Dev A delivers app/actions/auth.ts
-async function tempStubSignupAction(formData: FormData) {
+async function signupAction(formData: FormData) {
   "use server";
-  // Dev A's signup action will register via Supabase Auth with metadata (role, full_name) and redirect
-  console.log("TEMP-STUB: signup submitted for", formData.get("email"), "role:", formData.get("role"));
+  const role = (formData.get("role") as string) || "recruiter";
+  const res = await signUp(formData);
+  if (!res.ok) {
+    redirect(`/signup?role=${encodeURIComponent(role)}&error=${encodeURIComponent(res.error)}`);
+  }
+  redirect(res.data.redirectUrl);
 }
 
 async function SignupForm({
@@ -43,7 +48,7 @@ async function SignupForm({
           </div>
         )}
 
-        <form action={tempStubSignupAction} className="space-y-4">
+        <form action={signupAction} className="space-y-4">
           {/* Role Selection Radios */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -139,7 +144,6 @@ async function SignupForm({
           <div className="pt-2">
             <Button
               type="submit"
-              formAction={tempStubSignupAction}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium h-10 shadow-sm transition-all"
             >
               Create account

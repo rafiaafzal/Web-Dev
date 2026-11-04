@@ -1,18 +1,7 @@
 // types/recruiter.ts (Dev B owned)
+import type { ActionResult, ApplicationStatus, Profile } from '@/types/core';
 
-// TEMP-STUB: remove when Dev A delivers types/core.ts
-export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-// TEMP-STUB: remove when Dev A delivers types/core.ts
-export type ApplicationStatus =
-  | 'submitted'
-  | 'parsed'
-  | 'assessed'
-  | 'review'
-  | 'shortlisted'
-  | 'rejected'
-  | 'interview'
-  | 'selected';
+export type { ActionResult, ApplicationStatus, Profile };
 
 export type SkillRequirement = {
   name: string;

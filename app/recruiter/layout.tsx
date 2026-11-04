@@ -1,19 +1,22 @@
 import { Navbar } from "@/components/Navbar";
-
-// TEMP-STUB: When Dev A delivers lib/auth.ts, uncomment:
-// import { requireRole } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 export default async function RecruiterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // TEMP-STUB: Once Dev A delivers lib/auth.ts, protect layout:
-  // await requireRole("recruiter");
+  const profile = await requireRole("recruiter");
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-zinc-950">
-      <Navbar user={{ name: "Alex Morgan", email: "alex.morgan@talentai.io", role: "recruiter" }} />
+      <Navbar
+        user={{
+          name: profile.full_name || "Recruiter",
+          email: profile.email || "",
+          role: profile.role,
+        }}
+      />
       <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         {children}
       </main>

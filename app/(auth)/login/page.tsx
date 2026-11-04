@@ -1,16 +1,20 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { signIn } from "@/app/actions/auth";
 
-// TEMP-STUB: remove when Dev A delivers app/actions/auth.ts
-async function tempStubLoginAction(formData: FormData) {
+async function loginAction(formData: FormData) {
   "use server";
-  // Dev A's login action will authenticate via Supabase Auth and redirect to /recruiter or /candidate
-  console.log("TEMP-STUB: login submitted with", formData.get("email"));
+  const res = await signIn(formData);
+  if (!res.ok) {
+    redirect(`/login?error=${encodeURIComponent(res.error)}`);
+  }
+  redirect(res.data.redirectUrl);
 }
 
 async function LoginForm({
@@ -51,7 +55,7 @@ async function LoginForm({
           </div>
         )}
 
-        <form action={tempStubLoginAction} className="space-y-4">
+        <form action={loginAction} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email address</Label>
             <Input
@@ -83,7 +87,6 @@ async function LoginForm({
           <div className="pt-2">
             <Button
               type="submit"
-              formAction={tempStubLoginAction}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium h-10 shadow-sm transition-all"
             >
               Sign in

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
+import { getCurrentUser } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Sparkles,
@@ -13,10 +14,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950">
-      <Navbar user={null} />
+      <Navbar
+        user={
+          user
+            ? {
+                name: user.full_name || "User",
+                email: user.email || "",
+                role: user.role,
+              }
+            : null
+        }
+      />
 
       {/* Hero Section */}
       <main className="flex-1">
