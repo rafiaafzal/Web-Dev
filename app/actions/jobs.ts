@@ -282,7 +282,14 @@ Job Description:
 ${description}
 """
 
-Return JSON strictly matching the requested schema.`;
+Return a JSON object with EXACTLY this structure:
+{
+  "skills": [
+    { "name": "Python", "importance": 5, "required": true }
+  ],
+  "min_experience_years": 3,
+  "qualifications": "Bachelor's degree in Computer Science or equivalent"
+}`;
 
     const aiResult = await generateJSON(prompt, aiRequirementsSchema);
 
