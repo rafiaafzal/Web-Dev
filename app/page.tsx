@@ -54,28 +54,28 @@ export default async function HomePage() {
               rank applicants with transparent scoring breakdowns, and conduct confident interviews.
             </p>
 
-            {/* Call to Actions */}
+            {/* Call to Actions: ONLY 2 buttons */}
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto">
               <Link
-                href="/platform"
+                href={user ? (user.role === 'recruiter' ? '/recruiter' : '/signup?role=recruiter') : '/signup?role=recruiter'}
                 className={cn(
                   buttonVariants({ size: "lg" }),
-                  "w-full sm:w-auto h-12 px-7 text-sm font-bold bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+                  "w-full sm:w-auto h-12 px-8 text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 shadow-md transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
                 )}
               >
-                <Sparkles className="h-4 w-4 text-cyan-300" />
-                <span>Launch Enterprise AI Command Center</span>
-                <ArrowRight className="h-4 w-4 ml-1" />
+                <span>I am hiring</span>
+                <ArrowRight className="h-4 w-4" />
               </Link>
 
               <Link
-                href="/signup?role=candidate"
+                href={user ? (user.role === 'candidate' ? '/candidate' : '/signup?role=candidate') : '/signup?role=candidate'}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
-                  "w-full sm:w-auto h-12 px-6 text-sm font-semibold border-slate-300 bg-white hover:bg-slate-50 text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+                  "w-full sm:w-auto h-12 px-8 text-sm font-semibold border-slate-300 bg-white hover:bg-slate-50 text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
                 )}
               >
-                <span>Candidate Portal</span>
+                <span>I am looking for a job</span>
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
