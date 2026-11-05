@@ -144,7 +144,7 @@ export function PipelineActionBar({
       );
 
       if (res.ok) {
-        toast.success('Status updated. Email sent to candidate (simulated)', {
+        toast.success(res.data.notification || 'Status updated. Candidate notified.', {
           id: toastId,
         });
         setTargetStatus(null);

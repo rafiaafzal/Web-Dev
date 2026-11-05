@@ -644,7 +644,7 @@ export function InterviewPanel({ applicationId, status }: InterviewPanelProps) {
                     Make Final Hiring Decision
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    Candidate is in active interview stage. Final decisions trigger audit events and simulated notifications.
+                    Candidate is in active interview stage. Final decisions trigger audit events and candidate notifications.
                   </p>
                 </div>
               </div>

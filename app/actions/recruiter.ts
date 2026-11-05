@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { transition } from '@/lib/pipeline';
 import { formatActionError } from '@/utils/with-retry';
+import { notifyCandidate } from '@/utils/notify';
 import type {
   ActionResult,
   ApplicationStatus,
@@ -294,7 +295,7 @@ export async function setApplicationStatus(
   applicationId: string,
   toStatus: ApplicationStatus,
   note?: string
-): Promise<ActionResult<{ status: ApplicationStatus; notification?: string }>> {
+): Promise<ActionResult<{ status: ApplicationStatus; notification?: string; notified: boolean }>> {
   try {
     const user = await requireRole('recruiter');
 
@@ -308,15 +309,59 @@ export async function setApplicationStatus(
       return { ok: false, error: formatActionError(res.error) };
     }
 
+    let notified = false;
     let notification: string | undefined;
+
+    // Load job title for candidate notifications
+    let jobTitle = 'this position';
+    try {
+      const supabase = await createClient();
+      const { data: appRow } = await supabase
+        .from('applications')
+        .select('job:jobs!job_id(title)')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      const j = Array.isArray(appRow?.job) ? appRow?.job[0] : appRow?.job;
+      if (j?.title) {
+        jobTitle = j.title;
+      }
+    } catch {
+      // Non-critical fallback
+    }
+
     if (toStatus === 'shortlisted') {
-      notification = 'Candidate has been shortlisted. Email sent to candidate (simulated)';
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'shortlisted',
+        title: 'You have been shortlisted',
+        message: `Good news! You have been shortlisted for ${jobTitle}. The recruiter will contact you about the next steps.`,
+      });
+      notification = notified
+        ? 'Status updated. Candidate notified.'
+        : 'Status updated, but the notification could not be sent.';
     } else if (toStatus === 'rejected') {
-      notification = 'Candidate has been rejected. Notification sent to candidate (simulated)';
-    } else if (toStatus === 'interview') {
-      notification = 'Candidate advanced to interview. Invitation email sent to candidate (simulated)';
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'rejected',
+        title: 'Update on your application',
+        message: `Thank you for applying to ${jobTitle}. Unfortunately you were not selected to move forward.`,
+      });
+      notification = notified
+        ? 'Status updated. Candidate notified.'
+        : 'Status updated, but the notification could not be sent.';
     } else if (toStatus === 'selected') {
-      notification = 'Candidate selected for offer. Offer letter email sent to candidate (simulated)';
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'selected',
+        title: 'Congratulations!',
+        message: `You have been selected for ${jobTitle}. The recruiter will contact you shortly.`,
+      });
+      notification = notified
+        ? 'Status updated. Candidate notified.'
+        : 'Status updated, but the notification could not be sent.';
+    } else {
+      notification = 'Status updated successfully.';
     }
 
     return {
@@ -324,6 +369,7 @@ export async function setApplicationStatus(
       data: {
         status: toStatus,
         notification,
+        notified,
       },
     };
   } catch (err: unknown) {

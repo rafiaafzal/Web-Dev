@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/app/actions/auth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export interface NavbarProps {
   user?: {
@@ -124,7 +125,9 @@ function NavbarContent({ user = null }: NavbarProps) {
         {/* Right side: User Profile / Auth Actions */}
         <div className="hidden md:flex md:items-center md:gap-3">
           {user ? (
-            <DropdownMenu>
+            <div className="flex items-center gap-2.5">
+              {isCandidate && <NotificationBell />}
+              <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
@@ -190,6 +193,7 @@ function NavbarContent({ user = null }: NavbarProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link
@@ -209,7 +213,8 @@ function NavbarContent({ user = null }: NavbarProps) {
         </div>
 
         {/* Mobile menu toggle */}
-        <div className="flex md:hidden">
+        <div className="flex md:hidden items-center gap-2">
+          {user && isCandidate && <NotificationBell />}
           <Button
             variant="ghost"
             size="sm"

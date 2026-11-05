@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { transition } from '@/lib/pipeline';
 import { formatActionError } from '@/utils/with-retry';
+import { notifyCandidate } from '@/utils/notify';
 import type { ActionResult, ApplicationStatus } from '@/types/core';
 import type { Interview, InterviewFeedback } from '@/types/recruiter';
 
@@ -329,9 +330,44 @@ export async function scheduleInterview(
       decision: inserted.decision as 'selected' | 'rejected' | null,
     };
 
+    // Load job title for candidate notification
+    let jobTitle = 'the role';
+    try {
+      const { data: appRow } = await supabase
+        .from('applications')
+        .select('job:jobs!job_id(title)')
+        .eq('id', application_id)
+        .maybeSingle();
+
+      const j = Array.isArray(appRow?.job) ? appRow?.job[0] : appRow?.job;
+      if (j?.title) {
+        jobTitle = j.title;
+      }
+    } catch {
+      // Non-critical fallback
+    }
+
+    const notified = await notifyCandidate({
+      applicationId: application_id,
+      type: 'interview_scheduled',
+      title: 'Interview scheduled',
+      message: `Your ${type} interview for ${jobTitle} has been scheduled with ${interviewer_name}.`,
+      data: {
+        scheduled_at: scheduledDate.toISOString(),
+        duration_min,
+        interview_type: type,
+        interviewer_name,
+        job_title: jobTitle,
+      },
+    });
+
+    const notifMsg = notified
+      ? 'Interview scheduled. Candidate notified.'
+      : 'Interview scheduled, but the notification could not be sent.';
+
     const message = transErrorNote
-      ? `Interview scheduled. Note: Pipeline transition warning: ${transErrorNote}`
-      : 'Interview invitation sent to candidate (simulated)';
+      ? `${notifMsg} Note: Pipeline transition warning: ${transErrorNote}`
+      : notifMsg;
 
     return {
       ok: true,
@@ -465,10 +501,43 @@ export async function recordDecision(
         .eq('id', latestInterview.id);
     }
 
-    const notificationMessage =
-      decision === 'selected'
-        ? 'Candidate selected for offer. Official offer letter sent (simulated)'
-        : 'Candidate declined. Rejection notification sent to candidate (simulated)';
+    // Load job title for candidate notification
+    let jobTitle = 'this position';
+    try {
+      const { data: appRow } = await supabase
+        .from('applications')
+        .select('job:jobs!job_id(title)')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      const j = Array.isArray(appRow?.job) ? appRow?.job[0] : appRow?.job;
+      if (j?.title) {
+        jobTitle = j.title;
+      }
+    } catch {
+      // Non-critical fallback
+    }
+
+    let notified = false;
+    if (decision === 'selected') {
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'selected',
+        title: 'Congratulations!',
+        message: `You have been selected for ${jobTitle}. The recruiter will contact you shortly.`,
+      });
+    } else {
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'rejected',
+        title: 'Update on your application',
+        message: `Thank you for applying to ${jobTitle}. Unfortunately you were not selected to move forward.`,
+      });
+    }
+
+    const notificationMessage = notified
+      ? 'Status updated. Candidate notified.'
+      : 'Status updated, but the notification could not be sent.';
 
     return {
       ok: true,
