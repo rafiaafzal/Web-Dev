@@ -161,7 +161,7 @@ async function DashboardOverview() {
           </div>
         </div>
 
-        <AnalyticsCharts data={analytics} />
+        <AnalyticsCharts analytics={analytics} />
       </div>
 
       {/* Grid: Job Openings & Quick Actions */}
