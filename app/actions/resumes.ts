@@ -10,51 +10,131 @@ import { normalizeSkill } from '@/lib/ai/normalize';
 import { verifyParsedResume } from '@/lib/ai/verify';
 import type { ActionResult, ParsedResume, Resume } from '@/types/core';
 
+// Robust preprocessors to handle diverse LLM response shapes (e.g. categorized skill objects)
+const preprocessSkills = (val: unknown) => {
+  if (Array.isArray(val)) {
+    return val.map((item) => {
+      if (typeof item === 'string') {
+        return { name: item, excerpt: item, verified: false };
+      }
+      if (typeof item === 'object' && item !== null) {
+        const raw = item as Record<string, unknown>;
+        const name = String(raw.name || raw.skill || raw.title || '');
+        const excerpt = String(raw.excerpt || raw.quote || raw.evidence || name);
+        return { name, excerpt, verified: false };
+      }
+      return { name: '', excerpt: '', verified: false };
+    });
+  }
+
+  // If Gemini grouped skills by category: { technical: [...], frameworks: [...] }
+  if (typeof val === 'object' && val !== null) {
+    const list: { name: string; excerpt: string; verified: boolean }[] = [];
+    for (const [key, v] of Object.entries(val as Record<string, unknown>)) {
+      if (Array.isArray(v)) {
+        v.forEach((item) => {
+          if (typeof item === 'string') {
+            list.push({ name: item, excerpt: item, verified: false });
+          } else if (typeof item === 'object' && item !== null) {
+            const raw = item as Record<string, unknown>;
+            const name = String(raw.name || raw.skill || '');
+            const excerpt = String(raw.excerpt || raw.quote || name);
+            list.push({ name, excerpt, verified: false });
+          }
+        });
+      } else if (typeof v === 'string') {
+        list.push({ name: key, excerpt: v, verified: false });
+      }
+    }
+    return list;
+  }
+
+  return [];
+};
+
+const preprocessArrayOfObjects = (val: unknown) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'object' && val !== null) {
+    const list: unknown[] = [];
+    for (const v of Object.values(val as Record<string, unknown>)) {
+      if (Array.isArray(v)) {
+        list.push(...v);
+      } else if (typeof v === 'object' && v !== null) {
+        list.push(v);
+      }
+    }
+    return list;
+  }
+  return [];
+};
+
 const parsedResumeSchema = z.object({
-  name: z.string().default('Candidate'),
+  name: z
+    .preprocess((v) => (v ? String(v) : 'Candidate'), z.string())
+    .default('Candidate'),
   email: z.string().nullable().default(null),
   phone: z.string().nullable().default(null),
   skills: z
-    .array(
-      z.object({
-        name: z.string(),
-        excerpt: z.string().default(''),
-        verified: z.boolean().default(false),
-      })
+    .preprocess(
+      preprocessSkills,
+      z.array(
+        z.object({
+          name: z.string().default(''),
+          excerpt: z.string().default(''),
+          verified: z.boolean().default(false),
+        })
+      )
     )
     .default([]),
   education: z
-    .array(
-      z.object({
-        degree: z.string().default(''),
-        institution: z.string().default(''),
-        year: z.string().nullable().default(null),
-        excerpt: z.string().default(''),
-      })
+    .preprocess(
+      preprocessArrayOfObjects,
+      z.array(
+        z.object({
+          degree: z.string().default(''),
+          institution: z.string().default(''),
+          year: z
+            .preprocess((v) => (v ? String(v) : null), z.string().nullable())
+            .default(null),
+          excerpt: z.string().default(''),
+        })
+      )
     )
     .default([]),
   experience: z
-    .array(
-      z.object({
-        title: z.string().default(''),
-        company: z.string().default(''),
-        years: z.number().default(0),
-        summary: z.string().default(''),
-        excerpt: z.string().default(''),
-      })
+    .preprocess(
+      preprocessArrayOfObjects,
+      z.array(
+        z.object({
+          title: z.string().default(''),
+          company: z.string().default(''),
+          years: z
+            .preprocess((v) => (typeof v === 'string' ? parseFloat(v) || 0 : Number(v || 0)), z.number())
+            .default(0),
+          summary: z.string().default(''),
+          excerpt: z.string().default(''),
+        })
+      )
     )
     .default([]),
   projects: z
-    .array(
-      z.object({
-        name: z.string().default(''),
-        description: z.string().default(''),
-        tech: z.array(z.string()).default([]),
-        excerpt: z.string().default(''),
-      })
+    .preprocess(
+      preprocessArrayOfObjects,
+      z.array(
+        z.object({
+          name: z.string().default(''),
+          description: z.string().default(''),
+          tech: z
+            .preprocess((v) => (Array.isArray(v) ? v.map(String) : typeof v === 'string' ? [v] : []), z.array(z.string()))
+            .default([]),
+          excerpt: z.string().default(''),
+        })
+      )
     )
     .default([]),
-  total_experience_years: z.number().default(0),
+  total_experience_years: z
+    .preprocess((v) => (typeof v === 'string' ? parseFloat(v) || 0 : Number(v || 0)), z.number())
+    .default(0),
 });
 
 export async function uploadResume(
@@ -115,7 +195,7 @@ export async function uploadResume(
       const msg =
         extractErr instanceof Error ? extractErr.message : 'PDF extraction error';
 
-      const { data: failedRow } = await adminClient
+      await adminClient
         .from('resumes')
         .insert({
           candidate_id: user.id,
@@ -124,9 +204,7 @@ export async function uploadResume(
           raw_text: '',
           status: 'failed',
           error: `Corrupt or unreadable PDF: ${msg}`,
-        })
-        .select()
-        .single();
+        });
 
       return {
         ok: false,
@@ -157,16 +235,32 @@ export async function uploadResume(
       };
     }
 
-    // 3. Gemini JSON extraction
+    // 3. Gemini JSON extraction with explicit JSON structure guidelines
     const prompt = `You are an expert recruitment AI resume parser.
-Extract structured information from the following resume text.
-Rules:
-1. Extract all technical skills and soft skills. For each skill, include the EXACT sentence or phrase excerpt from the resume text where it appears.
-2. Extract work experience history with exact excerpt quotes.
-3. Extract projects, tech stack used, and exact excerpt quotes.
-4. Extract degrees, institutions, and graduation years with excerpts.
-5. Compute total years of professional experience accurately.
-6. Crucial: All 'excerpt' fields MUST be exact verbatim quotes from the text.
+Extract structured information from the following resume text and format as a valid JSON object matching this schema:
+{
+  "name": "Candidate Name",
+  "email": "candidate@example.com",
+  "phone": "+1234567890",
+  "skills": [
+    { "name": "Python", "excerpt": "sentence quote from text" }
+  ],
+  "experience": [
+    { "title": "Software Engineer", "company": "Company", "years": 2, "summary": "...", "excerpt": "..." }
+  ],
+  "projects": [
+    { "name": "Project Name", "description": "...", "tech": ["Python", "PostgreSQL"], "excerpt": "..." }
+  ],
+  "education": [
+    { "degree": "B.S. Computer Science", "institution": "University", "year": "2022", "excerpt": "..." }
+  ],
+  "total_experience_years": 4
+}
+
+CRITICAL RULES:
+1. "skills" MUST be a flat JSON array of objects with "name" and "excerpt". Do NOT group skills into an object with category subkeys.
+2. For every item, include an exact verbatim excerpt quote from the resume text where it appears.
+3. Compute total years of professional experience as a number.
 
 Resume Text:
 ---
@@ -390,7 +484,6 @@ export async function getResumeForApplication(
   applicationId: string
 ): Promise<ActionResult<{ resume: Resume | null; rawText: string | null }>> {
   try {
-    // Both recruiter and candidate can read their application's resume
     const { data: app, error: appErr } = await adminClient
       .from('applications')
       .select('resume_id')
