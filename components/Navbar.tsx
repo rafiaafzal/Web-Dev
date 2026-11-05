@@ -26,12 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// TEMP-STUB: remove when Dev A delivers app/actions/auth.ts logout action
-async function stubLogout() {
-  if (typeof window !== "undefined") {
-    window.location.href = "/login?message=Logged+out";
-  }
-}
+import { signOut } from "@/app/actions/auth";
 
 interface NavbarProps {
   user?: {
@@ -41,9 +36,22 @@ interface NavbarProps {
   } | null;
 }
 
-function NavbarContent({ user = { name: "Alex Recruiter", email: "alex@company.com", role: "recruiter" } }: NavbarProps) {
+function NavbarContent({ user = null }: NavbarProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await signOut();
+      window.location.href = "/login?message=" + encodeURIComponent("Logged out successfully");
+    } catch {
+      window.location.href = "/login";
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const recruiterNavItems = [
     { label: "Dashboard", href: "/recruiter", icon: LayoutDashboard },
@@ -142,17 +150,16 @@ function NavbarContent({ user = { name: "Alex Recruiter", email: "alex@company.c
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer p-0">
-                  {/* TEMP-STUB: replace stub action with real logout formAction when Dev A delivers app/actions/auth.ts */}
-                  <form action={stubLogout} className="w-full">
-                    <button
-                      type="submit"
-                      className="flex w-full items-center px-2 py-1.5 text-red-600 focus:text-red-600 cursor-pointer text-left text-sm"
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </button>
-                  </form>
+                <DropdownMenuItem
+                  className="cursor-pointer px-2 py-1.5 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleLogout();
+                  }}
+                  disabled={loggingOut}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>{loggingOut ? "Signing out..." : "Log out"}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -222,18 +229,17 @@ function NavbarContent({ user = { name: "Alex Recruiter", email: "alex@company.c
                 <div className="px-3 text-xs text-slate-500">
                   Signed in as <span className="font-semibold text-slate-900 dark:text-white">{user.name}</span>
                 </div>
-                {/* TEMP-STUB: logout */}
-                <form action={stubLogout}>
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </Button>
-                </form>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/30"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {loggingOut ? "Signing out..." : "Log out"}
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
