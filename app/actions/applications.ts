@@ -1,7 +1,5 @@
 'use server';
 
-export const maxDuration = 60;
-
 import { z } from 'zod';
 import { requireRole, getCurrentUser } from '@/lib/auth';
 import { adminClient } from '@/lib/supabase/admin';

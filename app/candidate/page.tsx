@@ -3,6 +3,7 @@ import { getMyResume } from '@/app/actions/resumes';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export default async function CandidateDashboardPage() {
   const [appsRes, resumeRes] = await Promise.all([

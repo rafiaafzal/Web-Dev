@@ -1,7 +1,5 @@
 'use server';
 
-export const maxDuration = 60;
-
 import { z } from 'zod';
 import { extractText } from 'unpdf';
 import { requireRole } from '@/lib/auth';
