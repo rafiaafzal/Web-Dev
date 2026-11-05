@@ -4,6 +4,7 @@ import { z } from 'zod';
 const apiKey = process.env.GEMINI_API_KEY || '';
 const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const embeddingModelName = process.env.GEMINI_EMBEDDING_MODEL || 'text-embedding-004';
+const fallbackModelName = process.env.GEMINI_FALLBACK_MODEL;
 
 let aiInstance: GoogleGenAI | null = null;
 
@@ -17,17 +18,46 @@ function getAI(): GoogleGenAI {
   return aiInstance;
 }
 
-async function retryOn429<T>(fn: () => Promise<T>, retries = 1, delayMs = 1500): Promise<T> {
-  try {
-    return await fn();
-  } catch (err: unknown) {
-    const errorStr = String(err);
-    if ((errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED')) && retries > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-      return retryOn429(fn, retries - 1, delayMs * 2);
+const TRANSIENT_PATTERNS = [
+  '503',
+  'unavailable',
+  'high demand',
+  'overloaded',
+  '500',
+  'internal',
+  '429',
+  'resource_exhausted',
+  'fetch failed',
+  'etimedout',
+  'econnreset',
+];
+
+function isTransientError(error: unknown): boolean {
+  const errStr = String(error).toLowerCase();
+  return TRANSIENT_PATTERNS.some((p) => errStr.includes(p));
+}
+
+const RETRY_DELAYS = [2000, 5000, 10000];
+
+async function callWithRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 4
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      lastErr = err;
+      if (!isTransientError(err) || attempt === maxAttempts) {
+        throw err;
+      }
+      const baseDelay = RETRY_DELAYS[attempt - 1] ?? 10000;
+      const jitter = Math.floor(Math.random() * 500);
+      await new Promise((resolve) => setTimeout(resolve, baseDelay + jitter));
     }
-    throw err;
   }
+  throw lastErr;
 }
 
 function cleanJsonString(str: string): string {
@@ -49,9 +79,9 @@ export async function generateJSON<T>(
 ): Promise<T> {
   const ai = getAI();
 
-  return retryOn429(async () => {
+  async function executeSingleAttempt(targetModel: string): Promise<T> {
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: targetModel,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -62,7 +92,49 @@ export async function generateJSON<T>(
     const cleaned = cleanJsonString(text);
     const parsed = JSON.parse(cleaned);
     return schema.parse(parsed);
-  });
+  }
+
+  // Handles 1 retry on JSON parse or zod validation error
+  async function executeWithParseRetry(targetModel: string): Promise<T> {
+    try {
+      return await executeSingleAttempt(targetModel);
+    } catch (err: unknown) {
+      const isParseOrZodError =
+        err instanceof SyntaxError ||
+        err instanceof z.ZodError ||
+        (err instanceof Error && err.name === 'ZodError');
+
+      if (isParseOrZodError) {
+        console.warn('Gemini JSON parsing/validation failed on first try, retrying once...');
+        return await executeSingleAttempt(targetModel);
+      }
+      throw err;
+    }
+  }
+
+  // Primary model execution with central retry
+  try {
+    return await callWithRetry(() => executeWithParseRetry(modelName), 4);
+  } catch (primaryErr: unknown) {
+    if (isTransientError(primaryErr)) {
+      // Model fallback if GEMINI_FALLBACK_MODEL is configured and different
+      if (fallbackModelName && fallbackModelName !== modelName) {
+        try {
+          return await callWithRetry(() => executeWithParseRetry(fallbackModelName), 2);
+        } catch (fallbackErr: unknown) {
+          console.error('Gemini fallback model call failed:', fallbackErr);
+          if (isTransientError(fallbackErr)) {
+            throw new Error('The AI service is busy right now. Please try again in a few seconds.');
+          }
+          throw fallbackErr;
+        }
+      }
+
+      console.error('Gemini primary model call failed after retries:', primaryErr);
+      throw new Error('The AI service is busy right now. Please try again in a few seconds.');
+    }
+    throw primaryErr;
+  }
 }
 
 export async function embed(texts: string[]): Promise<number[][]> {
@@ -72,48 +144,56 @@ export async function embed(texts: string[]): Promise<number[][]> {
 
   const ai = getAI();
 
-  return retryOn429(async () => {
-    const response = await ai.models.embedContent({
-      model: embeddingModelName,
-      contents: texts,
-      config: {
-        outputDimensionality: 768,
-      },
-    });
-
-    const respAny = response as unknown as {
-      embeddings?: { values?: number[] }[];
-      embedding?: { values?: number[] };
-    };
-
-    if (respAny.embeddings && respAny.embeddings.length > 0) {
-      return respAny.embeddings.map((e) => e.values || []);
-    }
-
-    if (respAny.embedding?.values) {
-      return [respAny.embedding.values];
-    }
-
-    // Fallback: handle individual calls if needed
-    const results: number[][] = [];
-    for (const text of texts) {
-      const single = await ai.models.embedContent({
+  try {
+    return await callWithRetry(async () => {
+      const response = await ai.models.embedContent({
         model: embeddingModelName,
-        contents: text,
+        contents: texts,
         config: {
           outputDimensionality: 768,
         },
       });
-      const singleAny = single as unknown as {
+
+      const respAny = response as unknown as {
         embeddings?: { values?: number[] }[];
         embedding?: { values?: number[] };
       };
-      const vals =
-        singleAny.embeddings?.[0]?.values ||
-        singleAny.embedding?.values ||
-        new Array(768).fill(0);
-      results.push(vals);
+
+      if (respAny.embeddings && respAny.embeddings.length > 0) {
+        return respAny.embeddings.map((e) => e.values || []);
+      }
+
+      if (respAny.embedding?.values) {
+        return [respAny.embedding.values];
+      }
+
+      // Fallback: handle individual calls if needed
+      const results: number[][] = [];
+      for (const text of texts) {
+        const single = await ai.models.embedContent({
+          model: embeddingModelName,
+          contents: text,
+          config: {
+            outputDimensionality: 768,
+          },
+        });
+        const singleAny = single as unknown as {
+          embeddings?: { values?: number[] }[];
+          embedding?: { values?: number[] };
+        };
+        const vals =
+          singleAny.embeddings?.[0]?.values ||
+          singleAny.embedding?.values ||
+          new Array(768).fill(0);
+        results.push(vals);
+      }
+      return results;
+    }, 4);
+  } catch (err: unknown) {
+    if (isTransientError(err)) {
+      console.error('Gemini embed call failed after retries:', err);
+      throw new Error('The AI service is busy right now. Please try again in a few seconds.');
     }
-    return results;
-  });
+    throw err;
+  }
 }

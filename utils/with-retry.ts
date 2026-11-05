@@ -23,7 +23,7 @@ export function formatActionError(error: unknown): string {
 
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  attempts = 3
+  attempts = 2
 ): Promise<T> {
   const delays = [2000, 5000];
 

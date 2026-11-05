@@ -1,5 +1,7 @@
 'use client';
 
+export const maxDuration = 60;
+
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   getMyResume,
