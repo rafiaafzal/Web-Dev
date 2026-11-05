@@ -205,6 +205,26 @@ export default async function CandidateDashboardPage() {
                   </div>
                 </div>
 
+                {/* Interview Notification Banner */}
+                {app.interview && (
+                  <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📅</span>
+                      <span>
+                        <strong>Interview Scheduled:</strong> with {app.interview.interviewer_name} ({app.interview.type} round, {app.interview.duration_min} mins)
+                      </span>
+                    </div>
+                    <span className="font-semibold text-purple-700 bg-white px-2.5 py-1 rounded border border-purple-100 w-fit">
+                      {new Date(app.interview.scheduled_at).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                )}
+
                 {/* Pipeline visual steps */}
                 <div className="mt-6 pt-4 border-t border-slate-100">
                   <div className="flex items-center justify-between text-xs font-medium text-slate-500">

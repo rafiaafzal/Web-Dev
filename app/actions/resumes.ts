@@ -1,5 +1,7 @@
 'use server';
 
+export const maxDuration = 60;
+
 import { z } from 'zod';
 import { extractText } from 'unpdf';
 import { requireRole } from '@/lib/auth';
@@ -332,12 +334,14 @@ ${rawText}
       content: `Candidate: ${verifiedResume.name}. Total Experience: ${verifiedResume.total_experience_years} years. Skills: ${verifiedResume.skills.map((s) => s.name).join(', ')}.`,
     });
 
-    // Skill chunks
+    // Skill chunks (only verified skills count towards semantic scoring)
     for (const s of verifiedResume.skills) {
-      chunkItems.push({
-        kind: 'skill',
-        content: `Skill: ${s.name}. Excerpt: ${s.excerpt}`,
-      });
+      if (s.verified) {
+        chunkItems.push({
+          kind: 'skill',
+          content: `Skill: ${s.name}. Excerpt: ${s.excerpt}`,
+        });
+      }
     }
 
     // Experience chunks

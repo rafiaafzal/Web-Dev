@@ -1,11 +1,13 @@
 'use server';
 
+export const maxDuration = 60;
+
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { adminClient } from '@/lib/supabase/admin';
 import { embed, generateJSON } from '@/lib/ai/gemini';
 import { normalizeSkill } from '@/lib/ai/normalize';
-import { verifyExcerpt } from '@/lib/ai/verify';
+import { verifyParsedResume, verifyExcerpt } from '@/lib/ai/verify';
 import {
   SCORING_WEIGHTS,
   SIMILARITY_LOW,
@@ -66,13 +68,8 @@ export async function runAssessment(
     const candidateProjects = parsed.projects || [];
     const candidateEducation = parsed.education || [];
 
-    // Collect unsupported claims
-    const unsupportedClaims: string[] = [];
-    (parsed.skills || []).forEach((s: { name: string; excerpt: string; verified: boolean }) => {
-      if (!s.verified) {
-        unsupportedClaims.push(`Skill '${s.name}' excerpt could not be verified in resume text.`);
-      }
-    });
+    // Collect all unsupported claims (skills, experience, projects, education)
+    const { unsupportedClaims } = verifyParsedResume(rawText, parsed);
 
     // 2. Fetch candidate chunks
     const { data: chunks } = await adminClient
@@ -326,6 +323,8 @@ export async function getAssessment(
   applicationId: string
 ): Promise<ActionResult<Assessment | null>> {
   try {
+    await requireRole('recruiter');
+
     const { data, error } = await adminClient
       .from('assessments')
       .select('*')
@@ -361,6 +360,7 @@ export async function getAssessment(
 export async function rerunAssessment(
   applicationId: string
 ): Promise<ActionResult<Assessment>> {
+  await requireRole('recruiter');
   return runAssessment(applicationId);
 }
 
@@ -368,5 +368,6 @@ export async function correctSkills(
   applicationId: string,
   overrides: { name: string; present: boolean }[]
 ): Promise<ActionResult<Assessment>> {
+  await requireRole('recruiter');
   return runAssessment(applicationId, overrides);
 }
