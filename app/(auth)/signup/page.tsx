@@ -5,7 +5,14 @@ import { Sparkles, AlertCircle, Building2, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { signUp } from "@/app/actions/auth";
 
 async function signupAction(formData: FormData) {
@@ -25,14 +32,14 @@ async function SignupForm({
 }) {
   const params = await searchParams;
   const error = params?.error;
-  const defaultRole = params?.role === "candidate" ? "candidate" : "recruiter";
+  const defaultRole = params?.role === "recruiter" ? "recruiter" : "candidate";
 
   return (
-    <Card className="border-slate-200 shadow-xl shadow-slate-200/50 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
+    <Card className="border-slate-200/80 shadow-sm bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl">Get started</CardTitle>
-        <CardDescription>
-          Select your role and complete your profile
+        <CardTitle className="text-xl font-semibold tracking-tight">Create your account</CardTitle>
+        <CardDescription className="text-slate-500 text-sm">
+          Join the AI-powered recruitment platform
         </CardDescription>
       </CardHeader>
 
@@ -49,72 +56,60 @@ async function SignupForm({
         )}
 
         <form action={signupAction} className="space-y-4">
-          {/* Role Selection Radios */}
+          {/* Role Selection */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              Select your role
-            </Label>
+            <Label className="text-sm font-medium text-slate-700 dark:text-zinc-300">I am joining as</Label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="relative flex cursor-pointer flex-col rounded-xl border border-slate-200 p-3.5 hover:border-indigo-500 has-checked:border-indigo-600 has-checked:bg-indigo-50/50 has-checked:ring-2 has-checked:ring-indigo-600/20 dark:border-zinc-800 dark:has-checked:bg-indigo-950/30">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                    <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                      Recruiter
-                    </span>
-                  </div>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="recruiter"
-                    defaultChecked={defaultRole === "recruiter"}
-                    className="h-4 w-4 text-indigo-600 accent-indigo-600 focus:ring-indigo-500"
-                  />
+              <label
+                className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-colors dark:border-zinc-800 dark:hover:bg-zinc-800 dark:has-[:checked]:border-indigo-500 dark:has-[:checked]:bg-indigo-950/30 dark:has-[:checked]:text-indigo-200"
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value="candidate"
+                  defaultChecked={defaultRole === "candidate"}
+                  className="sr-only"
+                />
+                <UserCircle className="h-5 w-5 text-slate-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold">Candidate</p>
+                  <p className="text-[11px] text-slate-500">Apply & track</p>
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
-                  Post jobs, review ranked candidates & manage interviews
-                </span>
               </label>
 
-              <label className="relative flex cursor-pointer flex-col rounded-xl border border-slate-200 p-3.5 hover:border-indigo-500 has-checked:border-indigo-600 has-checked:bg-indigo-50/50 has-checked:ring-2 has-checked:ring-indigo-600/20 dark:border-zinc-800 dark:has-checked:bg-indigo-950/30">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <UserCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                    <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                      Candidate
-                    </span>
-                  </div>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="candidate"
-                    defaultChecked={defaultRole === "candidate"}
-                    className="h-4 w-4 text-indigo-600 accent-indigo-600 focus:ring-indigo-500"
-                  />
+              <label
+                className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 has-[:checked]:text-indigo-900 transition-colors dark:border-zinc-800 dark:hover:bg-zinc-800 dark:has-[:checked]:border-indigo-500 dark:has-[:checked]:bg-indigo-950/30 dark:has-[:checked]:text-indigo-200"
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value="recruiter"
+                  defaultChecked={defaultRole === "recruiter"}
+                  className="sr-only"
+                />
+                <Building2 className="h-5 w-5 text-slate-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold">Recruiter</p>
+                  <p className="text-[11px] text-slate-500">Hire talent</p>
                 </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
-                  Upload PDF resume, apply to roles & track application status
-                </span>
               </label>
             </div>
           </div>
 
-          {/* Full Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="full_name">Full name</Label>
+            <Label htmlFor="full_name" className="text-sm font-medium text-slate-700 dark:text-zinc-300">Full Name</Label>
             <Input
               id="full_name"
               name="full_name"
               type="text"
               required
-              placeholder="e.g. Sarah Connor"
-              className="bg-white dark:bg-zinc-950"
+              placeholder="e.g. Sarah Jenkins"
+              className="bg-white border-slate-200 text-slate-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
-          {/* Email */}
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-zinc-300">Email address</Label>
             <Input
               id="email"
               name="email"
@@ -122,31 +117,30 @@ async function SignupForm({
               autoComplete="email"
               required
               placeholder="name@company.com"
-              className="bg-white dark:bg-zinc-950"
+              className="bg-white border-slate-200 text-slate-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
-          {/* Password */}
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-zinc-300">Password</Label>
             <Input
               id="password"
               name="password"
               type="password"
               autoComplete="new-password"
               required
-              minLength={6}
               placeholder="At least 6 characters"
-              className="bg-white dark:bg-zinc-950"
+              minLength={6}
+              className="bg-white border-slate-200 text-slate-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
           <div className="pt-2">
             <Button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium h-10 shadow-sm transition-all"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium h-10 shadow-sm transition-all dark:bg-indigo-600 dark:hover:bg-indigo-700"
             >
-              Create account
+              Create Account
             </Button>
           </div>
         </form>
@@ -173,27 +167,30 @@ export default function SignupPage({
   searchParams: Promise<{ error?: string; role?: string }>;
 }) {
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50 dark:bg-zinc-950 sm:px-6 lg:px-8">
-      <div className="w-full max-w-lg">
-        {/* Logo and Brand */}
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50/60 dark:bg-zinc-950 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition-transform group-hover:scale-105">
-              <Sparkles className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm dark:bg-indigo-600">
+              <Sparkles className="h-5 w-5" />
             </div>
-            <span className="font-extrabold text-2xl tracking-tight text-slate-900 dark:text-white">
+            <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
               Talent<span className="text-indigo-600">AI</span>
             </span>
           </Link>
           <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Create your account
+            Get started with TalentAI
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Join the recruitment intelligence platform
+            Intelligent recruitment with explainable matching
           </p>
         </div>
 
-        <Suspense fallback={<div className="h-96 rounded-xl bg-slate-100 animate-pulse dark:bg-zinc-900" />}>
+        <Suspense
+          fallback={
+            <div className="h-64 rounded-xl bg-slate-100 animate-pulse dark:bg-zinc-900" />
+          }
+        >
           <SignupForm searchParams={searchParams} />
         </Suspense>
       </div>

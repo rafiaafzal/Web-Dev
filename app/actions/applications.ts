@@ -162,6 +162,28 @@ export async function getMyApplications(): Promise<ActionResult<Application[]>> 
       return { ok: false, error: error.message };
     }
 
+    // Fetch scheduled interviews for candidate's applications if any
+    const appIds = (data || []).map((row) => row.id);
+    const interviewsMap: Record<string, { interviewer_name: string; scheduled_at: string; duration_min: number; type: string }> = {};
+
+    if (appIds.length > 0) {
+      const { data: interviewRows } = await adminClient
+        .from('interviews')
+        .select('application_id, interviewer_name, scheduled_at, duration_min, type')
+        .in('application_id', appIds);
+
+      if (interviewRows) {
+        for (const row of interviewRows) {
+          interviewsMap[row.application_id] = {
+            interviewer_name: row.interviewer_name,
+            scheduled_at: row.scheduled_at,
+            duration_min: row.duration_min,
+            type: row.type,
+          };
+        }
+      }
+    }
+
     // Format results
     const applications = (data || []).map((row) => {
       const jobData = Array.isArray(row.job) ? row.job[0] : row.job;
@@ -174,6 +196,7 @@ export async function getMyApplications(): Promise<ActionResult<Application[]>> 
         created_at: row.created_at,
         updated_at: row.updated_at,
         job: jobData,
+        interview: interviewsMap[row.id] || null,
       };
     });
 

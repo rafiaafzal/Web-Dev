@@ -9,7 +9,7 @@ export default async function RecruiterLayout({
   const profile = await requireRole("recruiter");
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-zinc-950">
+    <div className="min-h-screen flex flex-col bg-slate-50/60 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans">
       <Navbar
         user={{
           name: profile.full_name || "Recruiter",

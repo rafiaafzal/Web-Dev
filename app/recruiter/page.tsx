@@ -16,7 +16,10 @@ import {
 import { listMyJobs } from '@/app/actions/jobs';
 import { getAnalytics } from '@/app/actions/analytics';
 import { AnalyticsCharts } from '@/components/AnalyticsCharts';
+import { TalentSearchWidget } from '@/components/TalentSearchWidget';
 import { cn } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
 
 async function DashboardOverview() {
   const [analyticsResult, jobsResult] = await Promise.all([
@@ -126,113 +129,125 @@ async function DashboardOverview() {
             <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
               {totals.interviews}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">Scheduled candidate slots</p>
+            <p className="text-[11px] text-slate-500 mt-1">Sessions scheduled or held</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Conversion & Velocity Rates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Shortlist Rate */}
-        <Card className="border-slate-200 shadow-sm dark:border-zinc-800 bg-linear-to-br from-white to-indigo-50/20 dark:from-zinc-900 dark:to-zinc-900/60">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-sm font-semibold">Shortlist Conversion Rate</CardTitle>
-              <CardDescription className="text-xs">
-                Percentage of candidate pool passing qualification thresholds
-              </CardDescription>
-            </div>
-            <TrendingUp className="h-5 w-5 text-indigo-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
-              {totals.applications > 0 ? `${Math.round(shortlist_rate * 100)}%` : '0%'}
-            </div>
-            <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden mt-2">
-              <div
-                className="bg-indigo-600 h-full rounded-full transition-all"
-                style={{ width: `${Math.min(100, Math.round(shortlist_rate * 100))}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Semantic Talent Search Widget */}
+      <TalentSearchWidget />
 
-        {/* Average Processing Time */}
-        <Card className="border-slate-200 shadow-sm dark:border-zinc-800 bg-linear-to-br from-white to-blue-50/20 dark:from-zinc-900 dark:to-zinc-900/60">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-sm font-semibold">Average Processing Velocity</CardTitle>
-              <CardDescription className="text-xs">
-                Hours elapsed from submission to first shortlist or rejection decision
-              </CardDescription>
-            </div>
-            <Clock className="h-5 w-5 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
-              {avg_processing_hours > 0 ? `${avg_processing_hours.toFixed(1)} hrs` : '0.0 hrs'}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {avg_processing_hours > 0
-                ? 'Calculated from audit trail timestamp differentials'
-                : 'No candidate lifecycle decisions completed yet'}
+      {/* Pipeline Analytics & Breakdown Section */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              Recruitment Pipeline Intelligence
+            </h3>
+            <p className="text-xs text-slate-500">
+              Interactive visual analytics of candidate distribution, skill gap frequency, and funnel efficiency.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-zinc-300">
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+              Shortlist Rate: {shortlist_rate}%
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-zinc-300">
+              <Clock className="h-3.5 w-3.5 text-indigo-600" />
+              Avg Processing: {avg_processing_hours}h
+            </span>
+          </div>
+        </div>
+
+        <AnalyticsCharts data={analytics} />
       </div>
 
-      {/* Visual Analytics Charts */}
-      <AnalyticsCharts analytics={analytics} />
-
-      {/* Quick Access & Job Postings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-slate-200 shadow-sm dark:border-zinc-800">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
-              <span>Recent Job Postings</span>
-              <Link
-                href="/recruiter/jobs"
-                className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'sm' }),
-                  'text-xs inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700'
-                )}
-              >
-                <span>View all</span>
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Status and candidate counts for your latest roles
-            </CardDescription>
+      {/* Grid: Job Openings & Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: Recent Active Roles */}
+        <Card className="lg:col-span-2 border-slate-200 shadow-sm dark:border-zinc-800">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                Recent Job Postings
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Active opportunities currently accepting candidate submissions
+              </CardDescription>
+            </div>
+            <Link
+              href="/recruiter/jobs"
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            >
+              View all ({jobs.length}) →
+            </Link>
           </CardHeader>
           <CardContent>
             {jobs.length === 0 ? (
-              <p className="text-xs text-slate-500 py-4 text-center">
-                No jobs created yet. Click &quot;Post New Job&quot; above to create one.
-              </p>
+              <div className="text-center py-12">
+                <Briefcase className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  No job postings yet
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Get started by publishing your first job with AI requirement extraction.
+                </p>
+                <Link
+                  href="/recruiter/jobs/new"
+                  className={cn(buttonVariants({ size: 'sm' }), 'mt-4 bg-indigo-600 hover:bg-indigo-700 text-white')}
+                >
+                  Create Job Posting
+                </Link>
+              </div>
             ) : (
-              <div className="space-y-3">
-                {jobs.slice(0, 4).map((job) => (
+              <div className="divide-y divide-slate-100 dark:divide-zinc-800">
+                {jobs.slice(0, 5).map((job) => (
                   <div
                     key={job.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-zinc-900/50 border border-slate-100 dark:border-zinc-800"
+                    className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 px-2 rounded-lg transition"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{job.title}</p>
-                      <p className="text-xs text-slate-500">{job.department || 'General'} • {job.applicant_count || 0} applicants</p>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/recruiter/jobs/${job.id}`}
+                          className="font-semibold text-sm text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400 transition-colors"
+                        >
+                          {job.title}
+                        </Link>
+                        <span
+                          className={cn(
+                            'text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider',
+                            job.status === 'open'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-400'
+                          )}
+                        >
+                          {job.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {job.department || 'General'} • {job.location || 'Remote'} • {job.type}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-1.5">
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right sm:text-left">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                          {job.applicant_count ?? 0}
+                        </span>
+                        <span className="text-[11px] text-slate-500 ml-1">candidates</span>
+                      </div>
                       <Link
                         href={`/recruiter/jobs/${job.id}`}
-                        className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'h-7 text-xs')}
+                        className={cn(
+                          buttonVariants({ variant: 'outline', size: 'sm' }),
+                          'h-8 text-xs border-slate-200'
+                        )}
                       >
                         Applicants
-                      </Link>
-                      <Link
-                        href={`/recruiter/jobs/${job.id}/edit`}
-                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-7 text-xs')}
-                      >
-                        Edit
+                        <ArrowRight className="h-3 w-3 ml-1" />
                       </Link>
                     </div>
                   </div>
@@ -242,20 +257,11 @@ async function DashboardOverview() {
           </CardContent>
         </Card>
 
+        {/* Right 1 Col: Quick Workflow Actions */}
         <Card className="border-slate-200 shadow-sm dark:border-zinc-800">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
-              <span>Recruiter Quick Actions</span>
-              <Link
-                href="/recruiter/interviews"
-                className={cn(
-                  buttonVariants({ variant: 'ghost', size: 'sm' }),
-                  'text-xs inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700'
-                )}
-              >
-                <span>All Interviews</span>
-                <ArrowRight className="h-3 w-3" />
-              </Link>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+              Operations
             </CardTitle>
             <CardDescription className="text-xs">
               Streamlined talent operations and management shortcuts
@@ -289,6 +295,22 @@ async function DashboardOverview() {
                 <div>
                   <h5 className="font-semibold text-xs text-slate-900 dark:text-white">View Interview Schedule</h5>
                   <p className="text-[11px] text-slate-500">Track scheduled sessions and evaluation feedback</p>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-400" />
+            </Link>
+
+            <Link
+              href="/recruiter/compare"
+              className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+                  <Users className="h-4 w-4" />
+                </div>
+                <div>
+                  <h5 className="font-semibold text-xs text-slate-900 dark:text-white">Candidate Comparison</h5>
+                  <p className="text-[11px] text-slate-500">Side-by-side assessment matrix & duplicate detection</p>
                 </div>
               </div>
               <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -335,12 +357,22 @@ export default function RecruiterDashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/platform"
+              className={cn(
+                buttonVariants({ size: 'sm' }),
+                'bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-md shadow-indigo-600/30 flex items-center gap-1.5'
+              )}
+            >
+              <Sparkles className="h-4 w-4 text-cyan-300" />
+              <span>Enterprise AI Command Center</span>
+            </Link>
             <Link
               href="/recruiter/jobs/new"
               className={cn(
-                buttonVariants(),
-                'bg-indigo-600 hover:bg-indigo-700 text-white font-medium inline-flex items-center gap-2'
+                buttonVariants({ size: 'sm' }),
+                'bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700 inline-flex items-center gap-1.5'
               )}
             >
               <Briefcase className="h-4 w-4" />
