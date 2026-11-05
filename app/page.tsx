@@ -1,177 +1,174 @@
-import Link from 'next/link';
-import { getCurrentUser } from '@/lib/auth';
+import Link from "next/link";
+import { Navbar } from "@/components/Navbar";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  BrainCircuit,
+  FileCheck2,
+  CalendarCheck2,
+  BarChart3,
+  CheckCircle2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { getCurrentUser } from "@/lib/auth";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
+  const profile = await getCurrentUser();
+  const user = profile
+    ? {
+        name: profile.full_name || "User",
+        email: profile.email || "",
+        role: profile.role,
+      }
+    : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      {/* Top Navbar */}
-      <header className="border-b bg-white border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              TalentAI
-            </span>
-            <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-              Recruitment & Talent Intelligence
-            </span>
-          </div>
-
-          <nav className="flex items-center space-x-3">
-            {user ? (
-              <div className="flex items-center space-x-3">
-                <span className="text-xs text-slate-600 hidden sm:inline">
-                  Signed in as <strong className="text-slate-900">{user.full_name || user.email}</strong> ({user.role})
-                </span>
-                <Link
-                  href={user.role === 'recruiter' ? '/recruiter' : '/candidate'}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 shadow-sm transition"
-                >
-                  Go to {user.role === 'recruiter' ? 'Recruiter' : 'Candidate'} Dashboard →
-                </Link>
-              </div>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 transition"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/signup"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 shadow-sm transition"
-                >
-                  Sign Up Free
-                </Link>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 font-sans">
+      <Navbar user={user} />
 
       {/* Hero Section */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20 flex flex-col items-center text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 mb-6">
-          <span>⚡ Real-Time Evidence Verification & Multi-Factor AI Scoring</span>
-        </div>
+      <main className="flex-1">
+        <section className="relative overflow-hidden py-20 md:py-32 border-b border-slate-200/60 dark:border-zinc-800/60 bg-gradient-to-b from-white via-slate-50 to-indigo-50/20 dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-950">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+            {/* Top Tag */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/80 px-3.5 py-1 text-xs font-semibold text-indigo-700 shadow-sm backdrop-blur dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-300 mb-8 animate-in fade-in slide-in-from-bottom-3 duration-500">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Next-Generation Talent Intelligence & Matching</span>
+            </div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight max-w-4xl">
-          Intelligent Hiring with{' '}
-          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Evidence-Based AI
-          </span>
-        </h1>
+            {/* Main Headline */}
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl md:text-7xl dark:text-white max-w-4xl mx-auto leading-[1.12]">
+              Hiring decisions backed by{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-700">
+                explainable AI
+              </span>
+            </h1>
 
-        <p className="mt-5 text-base sm:text-lg text-slate-600 max-w-2xl">
-          Upload PDF resumes, automatically extract verified skills, assess candidates with multi-factor scoring (Skills, Experience, Projects, Qualifications), and make confident hiring decisions.
-        </p>
+            {/* Subtitle */}
+            <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              Eliminate black-box screening. Post roles, parse PDF resumes with verified evidence,
+              rank applicants with transparent scoring breakdowns, and conduct confident interviews.
+            </p>
 
-        {/* Action Portal Launch Cards */}
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl text-left">
-          {/* Candidate Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-400 hover:shadow-md transition flex flex-col justify-between">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mb-4">
-                👨‍💻
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">
-                Candidate Portal
+            {/* Call to Actions */}
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+              <Link
+                href="/signup?role=recruiter"
+                className={cn(
+                  buttonVariants({ size: "lg" }),
+                  "w-full sm:w-auto h-12 px-8 text-base font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+                )}
+              >
+                <span>I&apos;m hiring</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+
+              <Link
+                href="/signup?role=candidate"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "w-full sm:w-auto h-12 px-8 text-base font-semibold border-slate-300 bg-white hover:bg-slate-50 text-slate-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 shadow-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+                )}
+              >
+                <span>I&apos;m looking for a job</span>
+              </Link>
+            </div>
+
+            {/* Trust badge */}
+            <div className="mt-12 flex items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Humans make all final decisions
+              </span>
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-indigo-600" /> Evidence-checked claims
+              </span>
+              <span className="flex items-center gap-1.5">
+                <BrainCircuit className="h-4 w-4 text-indigo-600" /> Zero hallucination policy
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Feature Grid */}
+        <section className="py-20 bg-white dark:bg-zinc-900 border-b border-slate-200/60 dark:border-zinc-800/60">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                Built For Seamless Workflows
               </h2>
-              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Upload your PDF resume, view extracted skills with hallucination verification, browse open roles, and track your application status in real-time.
+              <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+                From job posting to final hire in minutes
               </p>
             </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row gap-2">
-              <Link
-                href="/candidate"
-                className="flex-1 text-center py-2.5 px-4 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition"
-              >
-                Open Candidate Portal →
-              </Link>
-              <Link
-                href="/candidate/resume"
-                className="py-2.5 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 text-center transition"
-              >
-                Upload Resume
-              </Link>
-            </div>
-          </div>
-
-          {/* Recruiter Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 hover:shadow-md transition flex flex-col justify-between">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg mb-4">
-                💼
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Feature 1 */}
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-7 hover:border-indigo-200 transition-all dark:border-zinc-800 dark:bg-zinc-950/40">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 mb-5">
+                  <FileCheck2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Evidence-Based Matching
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Every score maps directly to verified excerpts in resumes. Clearly separates confirmed gaps from mere missing evidence.
+                </p>
               </div>
-              <h2 className="text-xl font-bold text-slate-900">
-                Recruiter Portal
-              </h2>
-              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Post jobs, extract requirements with AI, review ranked applicants with score breakdowns, generate tailored interview questions, and schedule interviews.
-              </p>
-            </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row gap-2">
-              <Link
-                href="/recruiter"
-                className="flex-1 text-center py-2.5 px-4 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 transition"
-              >
-                Open Recruiter Portal →
-              </Link>
-              <Link
-                href="/login"
-                className="py-2.5 px-3 border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 text-center transition"
-              >
-                Sign In
-              </Link>
+              {/* Feature 2 */}
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-7 hover:border-indigo-200 transition-all dark:border-zinc-800 dark:bg-zinc-950/40">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 mb-5">
+                  <CalendarCheck2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Smart Interview Suite
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Generate tailored interview questions across three difficulty tiers plus project deep-dives with sample answer guides.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-7 hover:border-indigo-200 transition-all dark:border-zinc-800 dark:bg-zinc-950/40">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 mb-5">
+                  <BarChart3 className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Pipeline Intelligence
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Track hiring velocity, common skill gaps across applicant pools, shortlist ratios, and real-time candidate progression.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Feature Highlights Grid */}
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full text-left">
-          <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="text-sm font-bold text-slate-900">
-              📄 Verified Resume Extraction
-            </div>
-            <div className="text-xs text-slate-600 mt-1">
-              Extracts skills, experience, projects, and education with verbatim quote evidence checks.
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="text-sm font-bold text-slate-900">
-              ⚖️ Objective 4-Factor Scoring
-            </div>
-            <div className="text-xs text-slate-600 mt-1">
-              Skills (50%), Experience (25%), Projects (15%), and Qualifications (10%) with zero demographic bias.
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="text-sm font-bold text-slate-900">
-              🔍 Gap Analysis & Evidence
-            </div>
-            <div className="text-xs text-slate-600 mt-1">
-              Distinguishes between missing evidence and confirmed absent skills with personalized learning tips.
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <div className="text-sm font-bold text-slate-900">
-              🚀 End-to-End Pipeline
-            </div>
-            <div className="text-xs text-slate-600 mt-1">
-              Audit trail tracking from submission and assessment through shortlisting and interview scheduling.
-            </div>
-          </div>
-        </div>
+        </section>
       </main>
+
+      {/* Clean Footer */}
+      <footer className="border-t border-slate-200/80 bg-white py-8 text-center text-xs text-slate-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-slate-400">
+        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© 2026 TalentAI Platform. Recruitment & Talent Intelligence.</p>
+          <div className="flex items-center gap-6 font-medium">
+            <Link href="/candidate" className="hover:text-slate-900 dark:hover:text-white">
+              Candidate Portal
+            </Link>
+            <Link href="/recruiter" className="hover:text-slate-900 dark:hover:text-white">
+              Recruiter Portal
+            </Link>
+            <Link href="/login" className="hover:text-slate-900 dark:hover:text-white">
+              Sign In
+            </Link>
+            <Link href="/signup" className="hover:text-slate-900 dark:hover:text-white">
+              Create Account
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
