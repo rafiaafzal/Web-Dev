@@ -81,5 +81,11 @@ export type Application = {
     salary: string | null;
     description: string;
   };
+  interview?: {
+    interviewer_name: string;
+    scheduled_at: string;
+    duration_min: number;
+    type: string;
+  } | null;
   assessment?: Assessment;
 };

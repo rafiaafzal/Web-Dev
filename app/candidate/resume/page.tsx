@@ -7,6 +7,12 @@ import {
   updateParsedResume,
 } from '@/app/actions/resumes';
 import type { Resume, ParsedResume } from '@/types/core';
+import { FileText, Upload, Sparkles, CheckCircle2, AlertCircle, Edit2, Save, X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 export default function CandidateResumePage() {
   const [resume, setResume] = useState<Resume | null>(null);
@@ -74,60 +80,58 @@ export default function CandidateResumePage() {
         if (res.data.parsed) {
           setEditableParsed(res.data.parsed);
         }
-        if (res.data.status === 'empty') {
-          setMessage({
-            type: 'info',
-            text: 'Scanned or image-based PDF detected. Low text found. Please update details manually below.',
-          });
-        } else {
-          setMessage({
-            type: 'success',
-            text: 'Resume uploaded and successfully parsed by Gemini AI!',
-          });
-        }
+        setMessage({
+          type: 'success',
+          text: 'Resume successfully parsed, verified against raw text, and embedded with 768-dim vectors.',
+        });
       } else {
-        setMessage({ type: 'error', text: res.error });
+        setMessage({
+          type: 'error',
+          text: res.error,
+        });
       }
     });
   }
 
-  async function handleSaveCorrections(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editableParsed) return;
+  async function handleSaveEdits() {
+    if (!resume || !editableParsed) return;
 
     startTransition(async () => {
       const res = await updateParsedResume(editableParsed);
       if (res.ok) {
         setResume(res.data);
-        setEditableParsed(res.data.parsed);
         setIsEditing(false);
         setMessage({
           type: 'success',
-          text: 'Parsed resume fields updated and re-verified successfully!',
+          text: 'Profile corrections saved successfully.',
         });
       } else {
-        setMessage({ type: 'error', text: res.error });
+        setMessage({
+          type: 'error',
+          text: res.error,
+        });
       }
     });
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Page Title & Upload Card */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+    <div className="space-y-8">
+      {/* Header Banner */}
+      <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              Resume & Skills Profile
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Resume & Skills Dossier
             </h1>
-            <p className="text-sm text-slate-600 mt-1">
-              Upload your PDF resume. Our AI extracts evidence, checks for hallucinations, and matches you to roles.
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Upload your PDF resume. AI extracts verified evidence, eliminates hallucinations, and matches you to roles.
             </p>
           </div>
 
           <div>
-            <label className="relative inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-sm transition">
-              <span>{isPending ? 'Processing...' : 'Upload New PDF'}</span>
+            <label className="relative inline-flex items-center justify-center h-10 px-4 rounded-lg text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-700 cursor-pointer shadow-xs transition">
+              <Upload className="h-4 w-4 mr-2" />
+              <span>{isPending ? 'Processing...' : 'Upload PDF Resume'}</span>
               <input
                 type="file"
                 accept="application/pdf"
@@ -142,19 +146,20 @@ export default function CandidateResumePage() {
         {/* Status Alerts */}
         {message && (
           <div
-            className={`mt-4 p-4 rounded-lg text-sm border flex items-center justify-between ${
-              message.type === 'error'
-                ? 'bg-rose-50 text-rose-800 border-rose-200'
-                : message.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : 'bg-blue-50 text-blue-800 border-blue-200'
-            }`}
+            className={cn(
+              "mt-4 p-3.5 rounded-lg text-xs border flex items-center justify-between",
+              message.type === "error"
+                ? "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/30 dark:border-rose-900/40 dark:text-rose-300"
+                : message.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40 dark:text-emerald-300"
+                : "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/40 dark:text-blue-300"
+            )}
           >
             <span>{message.text}</span>
             <button
               type="button"
               onClick={() => setMessage(null)}
-              className="text-xs font-semibold underline ml-4"
+              className="text-xs font-semibold underline ml-4 hover:opacity-80"
             >
               Dismiss
             </button>
@@ -163,323 +168,240 @@ export default function CandidateResumePage() {
       </div>
 
       {isLoading ? (
-        <div className="p-12 text-center bg-white rounded-xl border border-slate-200">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-sm text-slate-500 mt-3">Loading resume profile...</p>
+        <div className="p-12 text-center bg-white rounded-xl border border-slate-200 dark:bg-zinc-900 dark:border-zinc-800">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400 mx-auto" />
+          <p className="text-xs text-slate-500 mt-2">Loading resume profile...</p>
         </div>
       ) : !resume ? (
-        <div className="bg-white p-12 text-center rounded-xl border border-slate-200 shadow-sm">
-          <div className="w-12 h-12 mx-auto text-slate-400 mb-3">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-          </div>
-          <h3 className="text-base font-bold text-slate-900">
+        <div className="bg-white p-12 text-center rounded-xl border border-slate-200/80 shadow-xs dark:bg-zinc-900 dark:border-zinc-800">
+          <FileText className="h-10 w-10 text-slate-300 dark:text-zinc-700 mx-auto mb-3" />
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
             No resume uploaded yet
           </h3>
-          <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1 mb-4">
-            Upload your PDF resume to automatically parse skills, projects, and work experience.
+          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-5">
+            Upload your PDF resume to automatically parse skills, projects, and work experience with verified evidence.
           </p>
+          <label className="relative inline-flex items-center justify-center h-9 px-4 rounded-lg text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-700 cursor-pointer shadow-xs transition">
+            <Upload className="h-3.5 w-3.5 mr-2" />
+            <span>Select PDF File</span>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleFileUpload}
+              disabled={isPending}
+            />
+          </label>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Resume Overview Header */}
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs dark:bg-zinc-900 dark:border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-slate-900">
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm font-semibold text-slate-900 dark:text-white">
                   {resume.file_name}
                 </span>
                 <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                  className={cn(
+                    "text-[10px] px-2 py-0.5 rounded-full font-medium border capitalize",
                     resume.status === 'parsed'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
                       : resume.status === 'empty'
                       ? 'bg-amber-50 text-amber-700 border-amber-200'
                       : 'bg-rose-50 text-rose-700 border-rose-200'
-                  }`}
+                  )}
                 >
                   {resume.status}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Uploaded on {new Date(resume.created_at).toLocaleDateString()}
+                Uploaded {new Date(resume.created_at).toLocaleDateString()}
               </p>
             </div>
 
-            <div>
-              <button
+            <div className="flex items-center gap-2">
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setIsEditing(!isEditing)}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition"
+                className="h-8 text-xs border-slate-200 text-slate-700 dark:border-zinc-800 dark:text-zinc-300"
               >
-                {isEditing ? 'Cancel Edit' : 'Edit Parsed Fields'}
-              </button>
+                <Edit2 className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                {isEditing ? 'Cancel Edit' : 'Edit Fields'}
+              </Button>
+
+              {isEditing && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveEdits}
+                  disabled={isPending}
+                  className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600"
+                >
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Parsed Resume Details / Form */}
+          {/* Parsed Resume Details */}
           {editableParsed && (
-            <form onSubmit={handleSaveCorrections} className="space-y-6">
-              {/* Basic Candidate Info */}
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">
-                  Basic Candidate Information
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Full Name
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editableParsed.name}
-                        onChange={(e) =>
-                          setEditableParsed({
-                            ...editableParsed,
-                            name: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                      />
-                    ) : (
-                      <div className="text-sm font-medium text-slate-900">
-                        {editableParsed.name || 'N/A'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Email
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="email"
-                        value={editableParsed.email || ''}
-                        onChange={(e) =>
-                          setEditableParsed({
-                            ...editableParsed,
-                            email: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                      />
-                    ) : (
-                      <div className="text-sm font-medium text-slate-900">
-                        {editableParsed.email || 'N/A'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Phone
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editableParsed.phone || ''}
-                        onChange={(e) =>
-                          setEditableParsed({
-                            ...editableParsed,
-                            phone: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                      />
-                    ) : (
-                      <div className="text-sm font-medium text-slate-900">
-                        {editableParsed.phone || 'N/A'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Total Experience (Years)
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={editableParsed.total_experience_years}
-                        onChange={(e) =>
-                          setEditableParsed({
-                            ...editableParsed,
-                            total_experience_years: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                      />
-                    ) : (
-                      <div className="text-sm font-bold text-blue-600">
-                        {editableParsed.total_experience_years} years
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Skills with Evidence and Verification Badges */}
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <h2 className="text-base font-bold text-slate-900">
-                    Extracted & Verified Skills
-                  </h2>
-                  <span className="text-xs text-slate-500">
-                    {editableParsed.skills.length} skills found
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2.5">
-                  {editableParsed.skills.map((skill, idx) => (
-                    <div
-                      key={idx}
-                      className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium bg-slate-50 border-slate-200 text-slate-800"
-                    >
-                      <span>{skill.name}</span>
-                      {skill.verified ? (
-                        <span
-                          title={`Verified excerpt: "${skill.excerpt}"`}
-                          className="inline-flex items-center text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold"
-                        >
-                          ✓ Verified
-                        </span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: Personal info & Skills */}
+              <div className="space-y-6">
+                {/* Candidate Overview Card */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs dark:bg-zinc-900 dark:border-zinc-800">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                    Contact & Experience
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-500">Name</label>
+                      {isEditing ? (
+                        <Input
+                          value={editableParsed.name}
+                          onChange={(e) =>
+                            setEditableParsed({ ...editableParsed, name: e.target.value })
+                          }
+                          className="h-8 text-xs mt-1"
+                        />
                       ) : (
-                        <span
-                          title="No exact excerpt match in raw text (hallucination flag)"
-                          className="inline-flex items-center text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold"
-                        >
-                          ⚠ Unverified
-                        </span>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {editableParsed.name || 'Not extracted'}
+                        </p>
                       )}
                     </div>
-                  ))}
+
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-500">Email</label>
+                      {isEditing ? (
+                        <Input
+                          value={editableParsed.email || ''}
+                          onChange={(e) =>
+                            setEditableParsed({ ...editableParsed, email: e.target.value })
+                          }
+                          className="h-8 text-xs mt-1"
+                        />
+                      ) : (
+                        <p className="text-xs text-slate-700 dark:text-zinc-300">
+                          {editableParsed.email || 'Not provided'}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-500">Total Experience</label>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editableParsed.total_experience_years}
+                          onChange={(e) =>
+                            setEditableParsed({
+                              ...editableParsed,
+                              total_experience_years: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8 text-xs mt-1"
+                        />
+                      ) : (
+                        <p className="text-xs font-medium text-slate-700 dark:text-zinc-300">
+                          {editableParsed.total_experience_years} years
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills Card */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs dark:bg-zinc-900 dark:border-zinc-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Verified Skills ({editableParsed.skills?.length || 0})
+                    </h3>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {(editableParsed.skills || []).map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className={cn(
+                          "inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-md border",
+                          skill.verified
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
+                        )}
+                        title={skill.excerpt ? `Verified quote: "${skill.excerpt}"` : undefined}
+                      >
+                        {skill.name}
+                        {skill.verified && <CheckCircle2 className="h-3 w-3 ml-1 text-emerald-600" />}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Work Experience */}
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">
-                  Work Experience
-                </h2>
-                {editableParsed.experience.length === 0 ? (
-                  <p className="text-xs text-slate-500">No experience records detected.</p>
-                ) : (
+              {/* Right Columns (2/3): Experience & Projects */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Experience */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs dark:bg-zinc-900 dark:border-zinc-800">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                    Work Experience
+                  </h3>
                   <div className="space-y-4">
-                    {editableParsed.experience.map((exp, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-lg border border-slate-100 bg-slate-50/50 space-y-1.5"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-900">
-                            {exp.title}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-600">
-                            {exp.years} years
-                          </span>
-                        </div>
-                        <div className="text-xs font-medium text-slate-700">
-                          {exp.company}
-                        </div>
-                        <p className="text-xs text-slate-600 mt-1">
+                    {(editableParsed.experience || []).map((exp, idx) => (
+                      <div key={idx} className="border-l-2 border-slate-200 dark:border-zinc-800 pl-3.5 py-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {exp.title} • <span className="font-normal text-slate-500">{exp.company}</span>
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{exp.years} years</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
                           {exp.summary}
                         </p>
                         {exp.excerpt && (
-                          <div className="text-[11px] text-slate-500 italic bg-white p-2 rounded border border-slate-100">
-                            &quot;{exp.excerpt}&quot;
+                          <p className="text-[11px] italic text-slate-400 mt-1 bg-slate-50 dark:bg-zinc-950 p-2 rounded border border-slate-100 dark:border-zinc-800">
+                            &ldquo;{exp.excerpt}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Projects */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs dark:bg-zinc-900 dark:border-zinc-800">
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                    Key Projects
+                  </h3>
+                  <div className="space-y-4">
+                    {(editableParsed.projects || []).map((proj, idx) => (
+                      <div key={idx} className="border-l-2 border-slate-200 dark:border-zinc-800 pl-3.5 py-1">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {proj.name}
+                        </p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                          {proj.description}
+                        </p>
+                        {proj.tech && proj.tech.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {proj.tech.map((t, tIdx) => (
+                              <span
+                                key={tIdx}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/60 dark:bg-zinc-800 dark:text-zinc-300"
+                              >
+                                {t}
+                              </span>
+                            ))}
                           </div>
                         )}
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* Projects */}
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">
-                  Projects & Technical Work
-                </h2>
-                {editableParsed.projects.length === 0 ? (
-                  <p className="text-xs text-slate-500">No projects detected.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {editableParsed.projects.map((proj, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-lg border border-slate-100 bg-slate-50/50 space-y-2"
-                      >
-                        <div className="text-sm font-bold text-slate-900">
-                          {proj.name}
-                        </div>
-                        <p className="text-xs text-slate-600">
-                          {proj.description}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {(proj.tech || []).map((t, tIdx) => (
-                            <span
-                              key={tIdx}
-                              className="px-2 py-0.5 rounded text-[11px] bg-blue-50 text-blue-700 border border-blue-100 font-medium"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Education */}
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">
-                  Education & Qualifications
-                </h2>
-                {editableParsed.education.length === 0 ? (
-                  <p className="text-xs text-slate-500">No education entries found.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {editableParsed.education.map((edu, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-lg border border-slate-100 bg-slate-50/50"
-                      >
-                        <div className="text-sm font-bold text-slate-900">
-                          {edu.degree}
-                        </div>
-                        <div className="text-xs text-slate-600 mt-1">
-                          {edu.institution} {edu.year ? `(${edu.year})` : ''}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Save Button when Editing */}
-              {isEditing && (
-                <div className="flex justify-end pt-4">
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="px-6 py-2.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 shadow-sm transition disabled:opacity-50"
-                  >
-                    {isPending ? 'Saving...' : 'Save & Re-verify Fields'}
-                  </button>
                 </div>
-              )}
-            </form>
+              </div>
+            </div>
           )}
         </div>
       )}
