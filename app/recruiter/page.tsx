@@ -73,7 +73,17 @@ export default async function RecruiterDashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            href="/platform"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold shadow-md shadow-indigo-600/30 flex items-center gap-1.5"
+            )}
+          >
+            <Sparkles className="h-4 w-4 text-cyan-300" />
+            <span>Open Enterprise AI Command Center</span>
+          </Link>
           <Link
             href="/recruiter/jobs"
             className={cn(
