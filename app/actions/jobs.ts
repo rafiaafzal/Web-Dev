@@ -1,8 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/server";
+import { requireRole } from "@/lib/auth";
+import { generateJSON } from "@/lib/ai/gemini";
 import type { ActionResult, Job, JobInput, SkillRequirement } from "@/types/recruiter";
 
 // Zod validation schemas
@@ -30,39 +31,13 @@ const jobInputSchema = z.object({
   qualifications: z.string().default(""),
 });
 
-// TEMP-STUB: remove when Dev A delivers lib/supabase/server.ts
-async function getSupabaseServerClient() {
-  const cookieStore = await cookies();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase environment variables");
-  }
-
-  return createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch {
-          // Ignore in Server Component context
-        }
-      },
-    },
-  });
-}
-
 /**
  * Creates a new job posting.
  */
 export async function createJob(input: JobInput): Promise<ActionResult<Job>> {
   try {
+    const recruiter = await requireRole("recruiter");
+
     const validated = jobInputSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -71,18 +46,12 @@ export async function createJob(input: JobInput): Promise<ActionResult<Job>> {
       };
     }
 
-    const supabase = await getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // If user is not yet logged in during local testing, generate/fallback to a placeholder
-    const recruiter_id = user?.id || "00000000-0000-0000-0000-000000000000";
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("jobs")
       .insert({
-        recruiter_id,
+        recruiter_id: recruiter.id,
         title: validated.data.title,
         department: validated.data.department,
         location: validated.data.location,
@@ -115,6 +84,8 @@ export async function createJob(input: JobInput): Promise<ActionResult<Job>> {
  */
 export async function updateJob(id: string, input: JobInput): Promise<ActionResult<Job>> {
   try {
+    const recruiter = await requireRole("recruiter");
+
     const validated = jobInputSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -123,7 +94,7 @@ export async function updateJob(id: string, input: JobInput): Promise<ActionResu
       };
     }
 
-    const supabase = await getSupabaseServerClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("jobs")
       .update({
@@ -138,6 +109,7 @@ export async function updateJob(id: string, input: JobInput): Promise<ActionResu
         qualifications: validated.data.qualifications,
       })
       .eq("id", id)
+      .eq("recruiter_id", recruiter.id)
       .select("*")
       .single();
 
@@ -162,11 +134,14 @@ export async function setJobStatus(
   status: "open" | "closed"
 ): Promise<ActionResult<Job>> {
   try {
-    const supabase = await getSupabaseServerClient();
+    const recruiter = await requireRole("recruiter");
+
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("jobs")
       .update({ status })
       .eq("id", id)
+      .eq("recruiter_id", recruiter.id)
       .select("*")
       .single();
 
@@ -188,7 +163,7 @@ export async function setJobStatus(
  */
 export async function getJob(id: string): Promise<ActionResult<Job>> {
   try {
-    const supabase = await getSupabaseServerClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("jobs")
       .select("*")
@@ -213,19 +188,15 @@ export async function getJob(id: string): Promise<ActionResult<Job>> {
  */
 export async function listMyJobs(): Promise<ActionResult<Job[]>> {
   try {
-    const supabase = await getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const recruiter = await requireRole("recruiter");
+    const supabase = await createClient();
 
-    let query = supabase.from("jobs").select("*").order("created_at", { ascending: false });
+    const { data: jobs, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("recruiter_id", recruiter.id)
+      .order("created_at", { ascending: false });
 
-    // If authenticated, filter by recruiter_id
-    if (user?.id) {
-      query = query.eq("recruiter_id", user.id);
-    }
-
-    const { data: jobs, error } = await query;
     if (error) {
       return { ok: false, error: error.message };
     }
@@ -262,14 +233,34 @@ export async function listMyJobs(): Promise<ActionResult<Job[]>> {
   }
 }
 
+const aiRequirementsSchema = z.object({
+  skills: z.array(
+    z.object({
+      name: z.string().min(1, "Skill name cannot be empty"),
+      importance: z.union([
+        z.literal(1),
+        z.literal(2),
+        z.literal(3),
+        z.literal(4),
+        z.literal(5),
+      ]),
+      required: z.boolean(),
+    })
+  ),
+  min_experience_years: z.number().default(0),
+  qualifications: z.string().default(""),
+});
+
 /**
- * Extracts requirements, skills, min experience, and qualifications from a raw job description using AI.
- * TEMP-STUB: will call lib/ai/gemini.ts generateJSON once Dev A delivers it.
+ * Extracts requirements, skills, min experience, and qualifications from a raw job description using Gemini AI.
+ * Strict: No hardcoded output.
  */
 export async function extractRequirements(
   description: string
 ): Promise<ActionResult<{ skills: SkillRequirement[]; min_experience_years: number; qualifications: string }>> {
   try {
+    await requireRole("recruiter");
+
     if (!description || description.trim().length < 10) {
       return {
         ok: false,
@@ -277,66 +268,39 @@ export async function extractRequirements(
       };
     }
 
-    // TEMP-STUB: Once Dev A delivers lib/ai/gemini.ts, uncomment:
-    // import { generateJSON } from "@/lib/ai/gemini";
-    // const aiResult = await generateJSON(prompt, schema);
-    // return { ok: true, data: aiResult };
+    const prompt = `You are an expert talent acquisition and AI recruitment assistant.
+Carefully analyze the following job description. Extract:
+1. "skills": An array of technical and core skills mentioned. For each skill provide:
+   - "name": Standardized skill name (e.g. "Python", "PostgreSQL", "Docker", "React").
+   - "importance": Integer from 1 to 5, where 5 is critical/mandatory, and 1 is nice-to-have.
+   - "required": Boolean true if the skill is strictly required/essential, false if preferred/optional.
+2. "min_experience_years": Minimum years of experience required (number, or 0 if not specified).
+3. "qualifications": Required education or degrees (e.g. "Bachelor's degree in Computer Science or equivalent experience").
 
-    // TEMP-STUB: intelligent rule-based fallback while waiting for Dev A's lib/ai/gemini.ts
-    const lower = description.toLowerCase();
-    const commonSkills = [
-      { name: "Python", regex: /\bpython\b/i, importance: 5 as const, required: true },
-      { name: "Django", regex: /\bdjango\b/i, importance: 4 as const, required: true },
-      { name: "PostgreSQL", regex: /\bpostgres(ql)?\b/i, importance: 4 as const, required: true },
-      { name: "Docker", regex: /\bdocker\b/i, importance: 4 as const, required: false },
-      { name: "Kubernetes", regex: /\bkubernetes|k8s\b/i, importance: 3 as const, required: false },
-      { name: "TypeScript", regex: /\btypescript\b/i, importance: 5 as const, required: true },
-      { name: "React", regex: /\breact(\.js)?\b/i, importance: 4 as const, required: true },
-      { name: "Next.js", regex: /\bnext(\.js)?\b/i, importance: 4 as const, required: false },
-      { name: "Node.js", regex: /\bnode(\.js)?\b/i, importance: 4 as const, required: false },
-      { name: "AWS", regex: /\baws|amazon web services\b/i, importance: 3 as const, required: false },
-      { name: "REST APIs", regex: /\brest(ful)? api(s)?\b/i, importance: 4 as const, required: true },
-      { name: "Git", regex: /\bgit\b/i, importance: 3 as const, required: false },
-    ];
+Job Description:
+"""
+${description}
+"""
 
-    const extractedSkills: SkillRequirement[] = commonSkills
-      .filter((s) => s.regex.test(lower))
-      .map(({ name, importance, required }) => ({ name, importance, required }));
+Return a JSON object with EXACTLY this structure:
+{
+  "skills": [
+    { "name": "Python", "importance": 5, "required": true }
+  ],
+  "min_experience_years": 3,
+  "qualifications": "Bachelor's degree in Computer Science or equivalent"
+}`;
 
-    // If none matched, provide default starter skills from context
-    if (extractedSkills.length === 0) {
-      extractedSkills.push(
-        { name: "Python", importance: 5, required: true },
-        { name: "PostgreSQL", importance: 4, required: true },
-        { name: "Docker", importance: 3, required: false }
-      );
-    }
-
-    // Experience detection
-    let minExperience = 0;
-    const expMatch = lower.match(/(\d+)\+?\s*(years?|yrs?)/);
-    if (expMatch && expMatch[1]) {
-      minExperience = parseInt(expMatch[1], 10);
-    }
-
-    // Qualifications detection
-    let qualifications = "Bachelor's degree in Computer Science, Software Engineering, or equivalent experience";
-    if (lower.includes("master") || lower.includes("msc") || lower.includes("phd")) {
-      qualifications = "Master's degree or advanced qualification preferred";
-    }
+    const aiResult = await generateJSON(prompt, aiRequirementsSchema);
 
     return {
       ok: true,
-      data: {
-        skills: extractedSkills,
-        min_experience_years: minExperience,
-        qualifications,
-      },
+      data: aiResult,
     };
   } catch (err: unknown) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Failed to extract requirements",
+      error: err instanceof Error ? err.message : "Failed to extract requirements with Gemini AI",
     };
   }
 }

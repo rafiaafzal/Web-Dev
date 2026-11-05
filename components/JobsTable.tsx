@@ -146,6 +146,12 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-2 pt-1">
                 <Link
+                  href={`/recruiter/jobs/${job.id}`}
+                  className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-8 text-xs inline-flex items-center")}
+                >
+                  <Users className="h-3.5 w-3.5 mr-1 text-indigo-600" /> Applicants
+                </Link>
+                <Link
                   href={`/recruiter/jobs/${job.id}/edit`}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs inline-flex items-center")}
                 >
@@ -250,6 +256,16 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
 
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Link
+                        href={`/recruiter/jobs/${job.id}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                          "h-8 px-2.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 inline-flex items-center"
+                        )}
+                      >
+                        <Users className="h-3.5 w-3.5 mr-1" />
+                        Applicants
+                      </Link>
                       <Link
                         href={`/recruiter/jobs/${job.id}/edit`}
                         className={cn(

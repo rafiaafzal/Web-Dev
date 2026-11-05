@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { signIn } from "@/app/actions/auth";
-import { redirect } from "next/navigation";
 
 async function loginAction(formData: FormData) {
   "use server";
@@ -34,10 +34,10 @@ async function LoginForm({
   const message = params?.message;
 
   return (
-    <Card className="border-slate-200 shadow-xl shadow-slate-200/50 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
+    <Card className="border-slate-200/80 shadow-sm bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-xl font-semibold tracking-tight">Welcome back</CardTitle>
+        <CardDescription className="text-slate-500 text-sm">
           Enter your credentials to access your dashboard
         </CardDescription>
       </CardHeader>
@@ -64,7 +64,7 @@ async function LoginForm({
 
         <form action={loginAction} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-zinc-300">Email address</Label>
             <Input
               id="email"
               name="email"
@@ -72,13 +72,13 @@ async function LoginForm({
               autoComplete="email"
               required
               placeholder="name@company.com"
-              className="bg-white dark:bg-zinc-950"
+              className="bg-white border-slate-200 text-slate-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-zinc-300">Password</Label>
             </div>
             <Input
               id="password"
@@ -87,14 +87,14 @@ async function LoginForm({
               autoComplete="current-password"
               required
               placeholder="••••••••"
-              className="bg-white dark:bg-zinc-950"
+              className="bg-white border-slate-200 text-slate-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
 
           <div className="pt-2">
             <Button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium h-10 shadow-sm transition-all"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium h-10 shadow-sm transition-all dark:bg-indigo-600 dark:hover:bg-indigo-700"
             >
               Sign in
             </Button>
@@ -123,15 +123,15 @@ export default function LoginPage({
   searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50 dark:bg-zinc-950 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50/60 dark:bg-zinc-950 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition-transform group-hover:scale-105">
-              <Sparkles className="h-6 w-6" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm dark:bg-indigo-600">
+              <Sparkles className="h-5 w-5" />
             </div>
-            <span className="font-extrabold text-2xl tracking-tight text-slate-900 dark:text-white">
+            <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
               Talent<span className="text-indigo-600">AI</span>
             </span>
           </Link>

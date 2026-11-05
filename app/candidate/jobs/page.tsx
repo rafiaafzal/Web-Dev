@@ -3,6 +3,11 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { browseJobs, applyToJob, getMyApplications } from '@/app/actions/applications';
 import { recommendJobs } from '@/app/actions/search';
+import { Search, Sparkles, Briefcase, MapPin, CheckCircle2, Clock, Loader2, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 type Job = {
@@ -58,7 +63,9 @@ export default function CandidateBrowseJobsPage() {
     setIsLoading(false);
   }
 
-  function handleApply(jobId: string, jobTitle: string) {
+  async function handleApply(jobId: string, jobTitle: string) {
+    if (appliedJobIds.has(jobId)) return;
+
     setActionMessage(null);
     startTransition(async () => {
       const res = await applyToJob(jobId);
@@ -66,7 +73,7 @@ export default function CandidateBrowseJobsPage() {
         setAppliedJobIds((prev) => new Set([...prev, jobId]));
         setActionMessage({
           type: 'success',
-          text: `Applied to "${jobTitle}"! AI scoring and evidence matching complete (Status: Assessed).`,
+          text: `Applied to ${jobTitle}! AI assessment completed with evidence verification.`,
         });
       } else {
         setActionMessage({
@@ -80,43 +87,43 @@ export default function CandidateBrowseJobsPage() {
   const filteredJobs = jobs.filter((job) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return (
-      job.title.toLowerCase().includes(q) ||
-      job.department?.toLowerCase().includes(q) ||
-      job.description?.toLowerCase().includes(q) ||
-      (Array.isArray(job.skills) &&
-        job.skills.some((s) => s.name?.toLowerCase().includes(q)))
-    );
+    const titleMatch = job.title.toLowerCase().includes(q);
+    const deptMatch = (job.department || '').toLowerCase().includes(q);
+    const skillMatch = job.skills.some((s) => s.name.toLowerCase().includes(q));
+    return titleMatch || deptMatch || skillMatch;
   });
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Search Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Explore Open Roles
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          Apply with your uploaded resume to receive instant, evidence-based AI assessment.
-        </p>
+    <div className="space-y-8">
+      {/* Header Banner */}
+      <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Explore Open Positions
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Apply with your uploaded resume to receive instant, transparent AI scoring with verified evidence.
+          </p>
+        </div>
 
         {/* Filters */}
         <div className="mt-6 flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <input
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
               type="text"
-              placeholder="Search by job title, department, or skill (e.g. Python, PostgreSQL)..."
+              placeholder="Search by job title, department, or skill (e.g. Python, Docker)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 h-10 text-sm bg-slate-50/50 border-slate-200 dark:bg-zinc-950 dark:border-zinc-800"
             />
           </div>
 
-          <div className="sm:w-48">
+          <div className="sm:w-52">
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white dark:bg-zinc-950 dark:border-zinc-800 text-slate-900 dark:text-zinc-100"
             >
               <option value="all">All Employment Types</option>
               <option value="full-time">Full-time</option>
@@ -129,16 +136,20 @@ export default function CandidateBrowseJobsPage() {
 
         {actionMessage && (
           <div
-            className={`mt-4 p-4 rounded-lg text-sm border flex items-center justify-between ${
-              actionMessage.type === 'error'
-                ? 'bg-rose-50 text-rose-800 border-rose-200'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            }`}
+            className={cn(
+              "mt-4 p-3.5 rounded-lg text-xs border flex items-center justify-between",
+              actionMessage.type === "error"
+                ? "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/30 dark:border-rose-900/40 dark:text-rose-300"
+                : "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40 dark:text-emerald-300"
+            )}
           >
-            <span>{actionMessage.text}</span>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>{actionMessage.text}</span>
+            </div>
             <button
               onClick={() => setActionMessage(null)}
-              className="text-xs font-semibold underline ml-4"
+              className="text-xs font-semibold underline ml-4 hover:opacity-80"
             >
               Dismiss
             </button>
@@ -148,56 +159,58 @@ export default function CandidateBrowseJobsPage() {
 
       {/* AI Recommendations Section */}
       {recommendedJobs.length > 0 && !searchQuery && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-bold text-blue-900 uppercase tracking-wide">
-              ✦ Recommended For You
-            </span>
-            <span className="text-xs text-blue-700">
+            <Badge variant="outline" className="text-[10px] font-semibold border-indigo-200 bg-indigo-50/70 text-indigo-700 dark:border-indigo-900/40 dark:bg-indigo-950/30 dark:text-indigo-300">
+              <Sparkles className="h-3 w-3 mr-1 text-indigo-500" />
+              AI Recommended
+            </Badge>
+            <span className="text-xs text-slate-500">
               Matched against your verified resume skills
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {recommendedJobs.slice(0, 2).map((rec) => {
               const hasApplied = appliedJobIds.has(rec.id);
               return (
                 <div
                   key={rec.id}
-                  className="bg-white p-4 rounded-lg border border-blue-100 flex flex-col justify-between"
+                  className="bg-slate-50/50 p-4 rounded-lg border border-slate-200/60 flex flex-col justify-between dark:bg-zinc-950/50 dark:border-zinc-800"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <h2 className="text-base font-bold text-slate-900">
+                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                         {rec.title}
                       </h2>
                       {rec.matchRate !== undefined && (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                          {rec.matchRate}% Skill Fit
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300">
+                          {rec.matchRate}% Fit
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
-                      {rec.department} • {rec.location}
+                      {rec.department || "General"} • {rec.location || "Remote"}
                     </div>
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-600">
+                    <span className="text-xs font-medium text-slate-500 capitalize">
                       {rec.type}
                     </span>
                     {hasApplied ? (
-                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                      <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300">
                         Applied ✓
                       </span>
                     ) : (
-                      <button
+                      <Button
+                        size="sm"
                         onClick={() => handleApply(rec.id, rec.title)}
                         disabled={isPending}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+                        className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700"
                       >
                         {isPending ? 'Applying...' : 'Apply Now'}
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -210,105 +223,90 @@ export default function CandidateBrowseJobsPage() {
       {/* Main Jobs Listing */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">
-            All Positions ({filteredJobs.length})
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+            Available Positions ({filteredJobs.length})
           </h2>
         </div>
 
         {isLoading ? (
-          <div className="p-12 text-center bg-white rounded-xl border border-slate-200">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-sm text-slate-500 mt-3">Loading available jobs...</p>
+          <div className="p-12 text-center bg-white rounded-xl border border-slate-200 dark:bg-zinc-900 dark:border-zinc-800">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400 mx-auto" />
+            <p className="text-xs text-slate-500 mt-2">Loading available jobs...</p>
           </div>
         ) : filteredJobs.length === 0 ? (
-          <div className="bg-white p-12 text-center rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900">
+          <div className="bg-white p-12 text-center rounded-xl border border-slate-200 shadow-xs dark:bg-zinc-900 dark:border-zinc-800">
+            <Briefcase className="h-9 w-9 text-slate-300 mx-auto mb-2" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
               No matching jobs found
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Try adjusting your search terms or employment type filter.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3.5">
             {filteredJobs.map((job) => {
               const hasApplied = appliedJobIds.has(job.id);
               return (
                 <div
                   key={job.id}
-                  className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition flex flex-col md:flex-row md:items-center justify-between gap-6"
+                  className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all dark:bg-zinc-900 dark:border-zinc-800 dark:hover:border-zinc-700 flex flex-col md:flex-row md:items-center justify-between gap-5"
                 >
                   <div className="space-y-2 flex-1">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h3 className="text-lg font-bold text-slate-900">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                         {job.title}
                       </h3>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 capitalize">
                         {job.type}
                       </span>
                     </div>
 
-                    <div className="text-xs text-slate-500 flex flex-wrap gap-x-3 gap-y-1">
-                      <span>Department: {job.department || 'Engineering'}</span>
-                      <span>•</span>
-                      <span>Location: {job.location || 'Remote'}</span>
-                      {job.salary && (
-                        <>
-                          <span>•</span>
-                          <span>Salary: {job.salary}</span>
-                        </>
-                      )}
-                      <span>•</span>
-                      <span>Min Experience: {job.min_experience_years || 0} yrs</span>
-                    </div>
-
-                    <p className="text-sm text-slate-600 line-clamp-2 mt-2">
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                       {job.description}
                     </p>
 
-                    {/* Skill Badges */}
-                    {Array.isArray(job.skills) && job.skills.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
+                      <span>{job.department || 'General'}</span>
+                      <span>•</span>
+                      <span>{job.location || 'Remote'}</span>
+                      {job.salary && (
+                        <>
+                          <span>•</span>
+                          <span className="font-medium text-slate-700 dark:text-zinc-300">{job.salary}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {job.skills && job.skills.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-2">
                         {job.skills.map((s, idx) => (
                           <span
                             key={idx}
-                            className={`text-xs px-2 py-0.5 rounded font-medium ${
-                              s.required
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                : 'bg-slate-50 text-slate-600 border border-slate-200'
-                            }`}
+                            className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-200/80 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700"
                           >
-                            {s.name} {s.required ? '*' : ''}
+                            {s.name}
+                            {s.required && <span className="text-indigo-600 ml-1 font-bold">*</span>}
                           </span>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Action Area */}
-                  <div className="flex flex-col items-end justify-center min-w-[140px]">
+                  <div className="shrink-0">
                     {hasApplied ? (
-                      <div className="text-center space-y-1">
-                        <span className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                          Applied ✓
-                        </span>
-                        <div className="text-[11px] text-slate-500">
-                          <Link
-                            href="/candidate"
-                            className="text-blue-600 hover:underline"
-                          >
-                            View in tracker
-                          </Link>
-                        </div>
-                      </div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>Applied</span>
+                      </span>
                     ) : (
-                      <button
+                      <Button
                         onClick={() => handleApply(job.id, job.title)}
                         disabled={isPending}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition disabled:opacity-50 text-sm"
+                        className="h-9 px-4 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-indigo-600 dark:hover:bg-indigo-700"
                       >
-                        {isPending ? 'Submitting...' : 'Apply with Resume'}
-                      </button>
+                        {isPending ? 'Analyzing...' : '1-Click Apply'}
+                      </Button>
                     )}
                   </div>
                 </div>
