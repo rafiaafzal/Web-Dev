@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { transition } from '@/lib/pipeline';
+import { formatActionError } from '@/utils/with-retry';
+import { notifyCandidate } from '@/utils/notify';
 import type {
   ActionResult,
   ApplicationStatus,
@@ -51,7 +53,7 @@ export async function listApplicants(
 
     if (error) {
       console.error('Error fetching applicants:', error);
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     if (!applications) {
@@ -121,8 +123,7 @@ export async function listApplicants(
 
     return { ok: true, data: rows };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to list applicants';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -158,7 +159,7 @@ export async function getApplicationDetail(
       .single();
 
     if (appError || !appData) {
-      return { ok: false, error: appError?.message || 'Application not found' };
+      return { ok: false, error: formatActionError(appError?.message || 'Application not found') };
     }
 
     // 2. Fetch events with changed_by profile (newest first)
@@ -286,8 +287,7 @@ export async function getApplicationDetail(
 
     return { ok: true, data: detail };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch application detail';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -295,7 +295,7 @@ export async function setApplicationStatus(
   applicationId: string,
   toStatus: ApplicationStatus,
   note?: string
-): Promise<ActionResult<{ status: ApplicationStatus; notification?: string }>> {
+): Promise<ActionResult<{ status: ApplicationStatus; notification?: string; notified: boolean }>> {
   try {
     const user = await requireRole('recruiter');
 
@@ -306,18 +306,62 @@ export async function setApplicationStatus(
     const res = await transition(applicationId, toStatus, user.id, note);
 
     if (!res.ok) {
-      return { ok: false, error: res.error };
+      return { ok: false, error: formatActionError(res.error) };
     }
 
+    let notified = false;
     let notification: string | undefined;
+
+    // Load job title for candidate notifications
+    let jobTitle = 'this position';
+    try {
+      const supabase = await createClient();
+      const { data: appRow } = await supabase
+        .from('applications')
+        .select('job:jobs!job_id(title)')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      const j = Array.isArray(appRow?.job) ? appRow?.job[0] : appRow?.job;
+      if (j?.title) {
+        jobTitle = j.title;
+      }
+    } catch {
+      // Non-critical fallback
+    }
+
     if (toStatus === 'shortlisted') {
-      notification = 'Candidate has been shortlisted. Email sent to candidate (simulated)';
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'shortlisted',
+        title: 'You have been shortlisted',
+        message: `Good news! You have been shortlisted for ${jobTitle}. The recruiter will contact you about the next steps.`,
+      });
+      notification = notified
+        ? 'Status updated. Candidate notified.'
+        : 'Status updated, but the notification could not be sent.';
     } else if (toStatus === 'rejected') {
-      notification = 'Candidate has been rejected. Notification sent to candidate (simulated)';
-    } else if (toStatus === 'interview') {
-      notification = 'Candidate advanced to interview. Invitation email sent to candidate (simulated)';
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'rejected',
+        title: 'Update on your application',
+        message: `Thank you for applying to ${jobTitle}. Unfortunately you were not selected to move forward.`,
+      });
+      notification = notified
+        ? 'Status updated. Candidate notified.'
+        : 'Status updated, but the notification could not be sent.';
     } else if (toStatus === 'selected') {
-      notification = 'Candidate selected for offer. Offer letter email sent to candidate (simulated)';
+      notified = await notifyCandidate({
+        applicationId,
+        type: 'selected',
+        title: 'Congratulations!',
+        message: `You have been selected for ${jobTitle}. The recruiter will contact you shortly.`,
+      });
+      notification = notified
+        ? 'Status updated. Candidate notified.'
+        : 'Status updated, but the notification could not be sent.';
+    } else {
+      notification = 'Status updated successfully.';
     }
 
     return {
@@ -325,11 +369,11 @@ export async function setApplicationStatus(
       data: {
         status: toStatus,
         notification,
+        notified,
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update application status';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -369,7 +413,7 @@ export async function addNote(
       .single();
 
     if (error || !data) {
-      return { ok: false, error: error?.message || 'Failed to add recruiter note' };
+      return { ok: false, error: formatActionError(error?.message || 'Failed to add recruiter note') };
     }
 
     return {
@@ -384,7 +428,6 @@ export async function addNote(
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to add recruiter note';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }

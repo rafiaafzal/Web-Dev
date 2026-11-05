@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { generateJSON } from "@/lib/ai/gemini";
+import { withRetry, formatActionError } from "@/utils/with-retry";
 import type { ActionResult, Job, JobInput, SkillRequirement } from "@/types/recruiter";
 
 // Zod validation schemas
@@ -67,14 +68,14 @@ export async function createJob(input: JobInput): Promise<ActionResult<Job>> {
       .single();
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     return { ok: true, data: data as Job };
   } catch (err: unknown) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Failed to create job",
+      error: formatActionError(err),
     };
   }
 }
@@ -291,7 +292,7 @@ Return a JSON object with EXACTLY this structure:
   "qualifications": "Bachelor's degree in Computer Science or equivalent"
 }`;
 
-    const aiResult = await generateJSON(prompt, aiRequirementsSchema);
+    const aiResult = await withRetry(() => generateJSON(prompt, aiRequirementsSchema));
 
     return {
       ok: true,
@@ -300,7 +301,7 @@ Return a JSON object with EXACTLY this structure:
   } catch (err: unknown) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Failed to extract requirements with Gemini AI",
+      error: formatActionError(err),
     };
   }
 }

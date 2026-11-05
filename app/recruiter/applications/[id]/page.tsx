@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth';
 import { getApplicationDetail } from '@/app/actions/recruiter';
 import { AssessmentScoreRing } from '@/components/AssessmentScoreRing';
 import { InterviewQuestions } from '@/components/InterviewQuestions';
+import { InterviewPanel } from '@/components/InterviewPanel';
 import { PipelineActionBar } from '@/components/PipelineActionBar';
 import { RecruiterNotesPanel } from '@/components/RecruiterNotesPanel';
 import { AuditTimeline } from '@/components/AuditTimeline';
@@ -530,6 +531,9 @@ export default async function ApplicationReviewPage({ params }: PageProps) {
 
           {/* Interview Questions Section */}
           <InterviewQuestions applicationId={application.id} />
+
+          {/* Interview Panel Section */}
+          <InterviewPanel applicationId={application.id} status={application.status} />
         </div>
 
         {/* Right Column (4 cols) - Notes & Audit History */}
