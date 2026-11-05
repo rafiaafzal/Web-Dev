@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { transition } from '@/lib/pipeline';
+import { formatActionError } from '@/utils/with-retry';
 import type { ActionResult, ApplicationStatus } from '@/types/core';
 import type { Interview, InterviewFeedback } from '@/types/recruiter';
 
@@ -146,7 +147,7 @@ export async function getInterviewForApplication(
       .maybeSingle();
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     if (!data) {
@@ -166,8 +167,7 @@ export async function getInterviewForApplication(
 
     return { ok: true, data: interview };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch interview';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -204,7 +204,7 @@ export async function listInterviews(): Promise<ActionResult<ScheduledInterviewI
       .order('scheduled_at', { ascending: true });
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     const items: ScheduledInterviewItem[] = (data || []).map((row) => {
@@ -230,8 +230,7 @@ export async function listInterviews(): Promise<ActionResult<ScheduledInterviewI
 
     return { ok: true, data: items };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to list interviews';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -305,6 +304,7 @@ export async function scheduleInterview(
       .eq('id', application_id)
       .single();
 
+    let transErrorNote: string | undefined;
     if (appData?.status === 'shortlisted') {
       const transResult = await transition(
         application_id,
@@ -314,6 +314,7 @@ export async function scheduleInterview(
       );
       if (!transResult.ok) {
         console.warn('Could not auto-transition application to interview stage:', transResult.error);
+        transErrorNote = formatActionError(transResult.error);
       }
     }
 
@@ -328,17 +329,20 @@ export async function scheduleInterview(
       decision: inserted.decision as 'selected' | 'rejected' | null,
     };
 
+    const message = transErrorNote
+      ? `Interview scheduled. Note: Pipeline transition warning: ${transErrorNote}`
+      : 'Interview invitation sent to candidate (simulated)';
+
     return {
       ok: true,
       data: {
         saved: true,
-        message: 'Interview invitation sent to candidate (simulated)',
+        message,
         interview: interviewObj,
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to schedule interview';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -376,7 +380,7 @@ export async function saveFeedback(
       .single();
 
     if (error || !data) {
-      return { ok: false, error: error?.message || 'Failed to save feedback' };
+      return { ok: false, error: formatActionError(error?.message || 'Failed to save feedback') };
     }
 
     const updated: Interview = {
@@ -392,8 +396,7 @@ export async function saveFeedback(
 
     return { ok: true, data: updated };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to save feedback';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -424,7 +427,7 @@ export async function recordDecision(
       .single();
 
     if (appError || !appData) {
-      return { ok: false, error: appError?.message || 'Application not found' };
+      return { ok: false, error: formatActionError(appError?.message || 'Application not found') };
     }
 
     if (appData.status !== 'interview') {
@@ -443,7 +446,7 @@ export async function recordDecision(
     );
 
     if (!transitionRes.ok) {
-      return { ok: false, error: transitionRes.error };
+      return { ok: false, error: formatActionError(transitionRes.error) };
     }
 
     // 2. Set decision on the latest interview row
@@ -475,7 +478,6 @@ export async function recordDecision(
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to record decision';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }

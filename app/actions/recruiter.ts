@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { transition } from '@/lib/pipeline';
+import { formatActionError } from '@/utils/with-retry';
 import type {
   ActionResult,
   ApplicationStatus,
@@ -51,7 +52,7 @@ export async function listApplicants(
 
     if (error) {
       console.error('Error fetching applicants:', error);
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     if (!applications) {
@@ -121,8 +122,7 @@ export async function listApplicants(
 
     return { ok: true, data: rows };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to list applicants';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -158,7 +158,7 @@ export async function getApplicationDetail(
       .single();
 
     if (appError || !appData) {
-      return { ok: false, error: appError?.message || 'Application not found' };
+      return { ok: false, error: formatActionError(appError?.message || 'Application not found') };
     }
 
     // 2. Fetch events with changed_by profile (newest first)
@@ -286,8 +286,7 @@ export async function getApplicationDetail(
 
     return { ok: true, data: detail };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch application detail';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -306,7 +305,7 @@ export async function setApplicationStatus(
     const res = await transition(applicationId, toStatus, user.id, note);
 
     if (!res.ok) {
-      return { ok: false, error: res.error };
+      return { ok: false, error: formatActionError(res.error) };
     }
 
     let notification: string | undefined;
@@ -328,8 +327,7 @@ export async function setApplicationStatus(
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update application status';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -369,7 +367,7 @@ export async function addNote(
       .single();
 
     if (error || !data) {
-      return { ok: false, error: error?.message || 'Failed to add recruiter note' };
+      return { ok: false, error: formatActionError(error?.message || 'Failed to add recruiter note') };
     }
 
     return {
@@ -384,7 +382,6 @@ export async function addNote(
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to add recruiter note';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }

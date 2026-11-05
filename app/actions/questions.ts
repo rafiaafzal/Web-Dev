@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { generateJSON } from '@/lib/ai/gemini';
+import { withRetry, formatActionError } from '@/utils/with-retry';
 import type { ActionResult, Assessment, ParsedResume } from '@/types/core';
 import type { InterviewQuestion, Job } from '@/types/recruiter';
 
@@ -50,7 +51,7 @@ export async function listQuestions(
       .order('created_at', { ascending: true });
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     const questions: InterviewQuestion[] = (data || []).map((q) => ({
@@ -72,8 +73,7 @@ export async function listQuestions(
 
     return { ok: true, data: questions };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to list questions';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -172,7 +172,7 @@ Return a JSON array of objects with the exact schema:
   }
 ]`;
 
-    const generated = await generateJSON(prompt, generatedQuestionsSchema);
+    const generated = await withRetry(() => generateJSON(prompt, generatedQuestionsSchema));
 
     // 2. Delete existing questions for this application
     await supabase
@@ -224,8 +224,7 @@ Return a JSON array of objects with the exact schema:
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to generate interview questions';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -279,8 +278,7 @@ export async function updateQuestion(
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to update question';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -302,13 +300,12 @@ export async function deleteQuestion(
       .eq('id', id);
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     return { ok: true, data: { success: true } };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to delete question';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -363,7 +360,7 @@ Return JSON in this exact shape:
 }`;
 
     const singleSchema = questionItemSchema;
-    const replacement = await generateJSON(prompt, singleSchema);
+    const replacement = await withRetry(() => generateJSON(prompt, singleSchema));
 
     // 3. Update the question row
     const { data: updated, error: updateError } = await supabase
@@ -395,7 +392,6 @@ Return JSON in this exact shape:
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to regenerate question';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }

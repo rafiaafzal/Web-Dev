@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
+import { formatActionError } from '@/utils/with-retry';
 import type { ActionResult, ApplicationStatus, Assessment, ParsedResume } from '@/types/core';
 import type { ComparisonData, ComparedCandidate, DuplicatePair, SkillRequirement } from '@/types/recruiter';
 
@@ -89,7 +90,7 @@ export async function compareApplications(
       .in('id', validIds);
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     if (!apps || apps.length === 0) {
@@ -174,8 +175,7 @@ export async function compareApplications(
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to compare candidates';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -207,7 +207,7 @@ export async function findDuplicates(
       .eq('job_id', jobId);
 
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: formatActionError(error.message) };
     }
 
     if (!apps || apps.length < 2) {
@@ -307,8 +307,7 @@ export async function findDuplicates(
 
     return { ok: true, data: duplicates };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to scan for duplicate applications';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -358,8 +357,7 @@ export async function confirmDuplicate(
 
     return { ok: true, data: { success: true } };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to confirm duplicate';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
 
@@ -391,7 +389,6 @@ export async function dismissDuplicate(
 
     return { ok: true, data: { success: true } };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to dismiss duplicate';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }

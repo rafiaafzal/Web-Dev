@@ -2,6 +2,7 @@
 
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { formatActionError } from '@/utils/with-retry';
 import type { ActionResult, ApplicationStatus, Assessment } from '@/types/core';
 import type { Analytics } from '@/types/recruiter';
 
@@ -28,7 +29,7 @@ export async function getAnalytics(): Promise<ActionResult<Analytics>> {
       .eq('recruiter_id', user.id);
 
     if (jobsError) {
-      return { ok: false, error: jobsError.message };
+      return { ok: false, error: formatActionError(jobsError.message) };
     }
 
     const jobList = jobs || [];
@@ -63,7 +64,7 @@ export async function getAnalytics(): Promise<ActionResult<Analytics>> {
       .in('job_id', jobIds);
 
     if (appsError) {
-      return { ok: false, error: appsError.message };
+      return { ok: false, error: formatActionError(appsError.message) };
     }
 
     const appList = applications || [];
@@ -208,7 +209,6 @@ export async function getAnalytics(): Promise<ActionResult<Analytics>> {
       },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to generate recruiter analytics';
-    return { ok: false, error: message };
+    return { ok: false, error: formatActionError(err) };
   }
 }
