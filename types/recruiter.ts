@@ -90,6 +90,7 @@ export type InterviewQuestion = {
   category: 'role' | 'project';
   question: string;
   answer_guide: string;
+  created_at?: string;
 };
 
 export type InterviewFeedback = {
@@ -124,4 +125,30 @@ export type Analytics = {
   shortlist_rate: number;
   avg_processing_hours: number;
   common_gaps: { skill: string; count: number }[];
+};
+
+export type ComparedCandidate = {
+  application_id: string;
+  candidate_name: string;
+  status: ApplicationStatus;
+  assessment: Assessment | null;
+  missing_information: string[];
+  unverified_skills: string[];
+};
+
+export type ComparisonData = {
+  job: {
+    id: string;
+    title: string;
+    skills: SkillRequirement[];
+  } | null;
+  candidates: ComparedCandidate[];
+};
+
+export type DuplicatePair = {
+  application_id: string;
+  other_application_id: string;
+  candidate_name: string;
+  other_candidate_name: string;
+  reasons: string[];
 };

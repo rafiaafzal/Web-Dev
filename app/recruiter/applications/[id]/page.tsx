@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { getApplicationDetail } from '@/app/actions/recruiter';
 import { AssessmentScoreRing } from '@/components/AssessmentScoreRing';
+import { InterviewQuestions } from '@/components/InterviewQuestions';
 import { PipelineActionBar } from '@/components/PipelineActionBar';
 import { RecruiterNotesPanel } from '@/components/RecruiterNotesPanel';
 import { AuditTimeline } from '@/components/AuditTimeline';
@@ -526,6 +527,9 @@ export default async function ApplicationReviewPage({ params }: PageProps) {
               </div>
             )}
           </div>
+
+          {/* Interview Questions Section */}
+          <InterviewQuestions applicationId={application.id} />
         </div>
 
         {/* Right Column (4 cols) - Notes & Audit History */}

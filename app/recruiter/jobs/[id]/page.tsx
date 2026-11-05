@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { getJob } from '@/app/actions/jobs';
 import { listApplicants } from '@/app/actions/recruiter';
+import { findDuplicates } from '@/app/actions/compare';
 import { RankedApplicantsTable } from '@/components/RankedApplicantsTable';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -24,9 +25,10 @@ export default async function JobApplicantsPage({ params }: PageProps) {
   await requireRole('recruiter');
   const { id } = await params;
 
-  const [jobResult, applicantsResult] = await Promise.all([
+  const [jobResult, applicantsResult, duplicatesResult] = await Promise.all([
     getJob(id),
     listApplicants(id),
+    findDuplicates(id),
   ]);
 
   if (!jobResult.ok || !jobResult.data) {
@@ -35,6 +37,7 @@ export default async function JobApplicantsPage({ params }: PageProps) {
 
   const job = jobResult.data;
   const applicants = applicantsResult.ok ? applicantsResult.data : [];
+  const duplicates = duplicatesResult.ok ? duplicatesResult.data : [];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -108,7 +111,11 @@ export default async function JobApplicantsPage({ params }: PageProps) {
       </div>
 
       {/* Ranked Applicants Table */}
-      <RankedApplicantsTable initialApplicants={applicants} jobId={job.id} />
+      <RankedApplicantsTable
+        initialApplicants={applicants}
+        jobId={job.id}
+        duplicates={duplicates}
+      />
     </div>
   );
 }
