@@ -37,7 +37,7 @@ const feedbackInputSchema = z.object({
 
 const decisionSchema = z.enum(['selected', 'rejected']);
 
-export function hasTimeOverlap(
+function hasTimeOverlap(
   startA: Date,
   durationA: number,
   startB: Date,
